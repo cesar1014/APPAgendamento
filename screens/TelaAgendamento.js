@@ -5,7 +5,7 @@ import { Picker } from '@react-native-picker/picker';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-const ScheduleScreen = ({ navigation, appointments, setAppointments }) => {
+const TelaAgendamentos = ({ navigation, appointments, setAppointments }) => {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedTime, setSelectedTime] = useState("08:00");
@@ -224,4 +224,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ScheduleScreen;
+export default TelaAgendamentos;

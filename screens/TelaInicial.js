@@ -1,4 +1,3 @@
-// HomeScreen.js
 import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -59,7 +58,7 @@ const AppointmentCard = ({ appointment, onEdit, onDelete }) => {
   );
 };
 
-export default function HomeScreen({ navigation, appointments, setAppointments }) {
+export default function TelaInicial({ navigation, appointments, setAppointments }) {
   const handleEdit = (appointment) => {
     navigation.navigate('AGENDAMENTO', { appointment });
   };

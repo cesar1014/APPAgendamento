@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import HomeScreen from './screens/HomeScreen';
-import ScheduleScreen from './screens/ScheduleScreen';
+import TelaInicial from './screens/TelaInicial';
+import TelaAgendamentos from './screens/TelaAgendamento';
 
 const Stack = createStackNavigator();
 
@@ -37,12 +37,12 @@ export default function App() {
           name="Home"
           options={{ title: 'IFGENDER' }}
         >
-          {props => <HomeScreen {...props} appointments={appointments} setAppointments={setAppointments} />}
+          {props => <TelaInicial {...props} appointments={appointments} setAppointments={setAppointments} />}
         </Stack.Screen>
         <Stack.Screen
           name="AGENDAMENTO"
         >
-          {props => <ScheduleScreen {...props} appointments={appointments} setAppointments={setAppointments} />}
+          {props => <TelaAgendamentos {...props} appointments={appointments} setAppointments={setAppointments} />}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
