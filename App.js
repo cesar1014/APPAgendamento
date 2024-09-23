@@ -2,10 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image, View, Text } from 'react-native';
 import TelaInicial from './Telas/TelaInicial';
 import TelaAgendamentos from './Telas/TelaAgendamento';
 
 const Stack = createStackNavigator();
+
+function LogoTitle() {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Image
+        source={require('./assets/icon.png')}
+        style={{ width: 100, height: 100, marginRight: -25 }}
+      />
+      <Text style={{ color: '#9282FA', fontWeight: 'bold', fontSize: 20 }}>IFPLANNER</Text>
+    </View>
+  );
+}
 
 export default function App() {
   const [appointments, setAppointments] = useState([]);
@@ -28,14 +41,11 @@ export default function App() {
             backgroundColor: '#151515',
           },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
         }}
       >
         <Stack.Screen
           name="Home"
-          options={{ title: 'IFGENDER' }}
+          options={{ headerTitle: () => <LogoTitle /> }}
         >
           {props => <TelaInicial {...props} appointments={appointments} setAppointments={setAppointments} />}
         </Stack.Screen>
