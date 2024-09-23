@@ -10,10 +10,10 @@ const Stack = createStackNavigator();
 
 function LogoTitle() {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -40 }}>
       <Image
         source={require('./assets/icon.png')}
-        style={{ width: 100, height: 100, marginRight: -25 }}
+        style={{ width: 100, height: 100, marginRight: -20 }}
       />
       <Text style={{ color: '#9282FA', fontWeight: 'bold', fontSize: 20 }}>IFPLANNER</Text>
     </View>
