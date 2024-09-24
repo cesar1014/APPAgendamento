@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getAppointments, deleteAppointment } from '../database';
 
 const getPeriodIcon = (time) => {
   const [hour] = time.split(':').map(Number);
@@ -59,29 +59,42 @@ const AppointmentCard = ({ appointment, onEdit, onDelete }) => {
 };
 
 export default function TelaInicial({ navigation, appointments, setAppointments }) {
+  useEffect(() => {
+    const loadAppointments = async () => {
+      const storedAppointments = await getAppointments();
+
+      // Ordena os agendamentos pelo mais próximo (data e hora)
+      const sortedAppointments = storedAppointments.sort((a, b) => {
+        // Converte a data e hora para objetos Date para comparação
+        const dateA = new Date(`${a.date}T${a.time}`);
+        const dateB = new Date(`${b.date}T${b.time}`);
+        return dateA - dateB; // Ordena do mais próximo para o mais distante
+      });
+
+      // Atualiza o estado com os agendamentos ordenados
+      setAppointments(sortedAppointments);
+    };
+
+    loadAppointments();
+  }, []);
+
   const handleEdit = (appointment) => {
     navigation.navigate('AGENDAMENTO', { appointment });
   };
 
   const handleDelete = async (appointment) => {
-    const updatedAppointments = appointments.filter(a => a.id !== appointment.id);
+    await deleteAppointment(appointment.id);
+    const updatedAppointments = await getAppointments();
     setAppointments(updatedAppointments);
-    await AsyncStorage.setItem('@appointments', JSON.stringify(updatedAppointments));
     Alert.alert("Sucesso", `Agendamento excluído: ${appointment.name}`);
   };
-
-  const sortedAppointments = appointments.sort((a, b) => {
-    const dateA = new Date(a.date + ' ' + a.time);
-    const dateB = new Date(b.date + ' ' + b.time);
-    return dateA - dateB;
-  });
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Sua agenda</Text>
       <FlatList
-        data={sortedAppointments}
-        keyExtractor={(item) => item.id}
+        data={appointments}
+        keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <AppointmentCard
             appointment={item}

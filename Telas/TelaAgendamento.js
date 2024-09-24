@@ -1,21 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { addAppointment, getAppointments, updateAppointment } from '../database'; // Import update function
 
-const TelaAgendamentos = ({ navigation, appointments, setAppointments }) => {
-  const [date, setDate] = useState(new Date());
+const TelaAgendamentos = ({ route, navigation, appointments, setAppointments }) => {
+  const { appointment } = route.params || {}; // Recebe os dados do agendamento, se houver
+  const [date, setDate] = useState(appointment ? new Date(appointment.date) : new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedTime, setSelectedTime] = useState("08:00");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [serviceDescription, setServiceDescription] = useState("");
+  const [selectedTime, setSelectedTime] = useState(appointment ? appointment.time : "08:00");
+  const [name, setName] = useState(appointment ? appointment.name : "");
+  const [phone, setPhone] = useState(appointment ? appointment.phone : "");
+  const [serviceDescription, setServiceDescription] = useState(appointment ? appointment.serviceDescription : "");
+
+  useEffect(() => {
+    const loadAppointments = async () => {
+      const storedAppointments = await getAppointments();
+      setAppointments(storedAppointments);
+    };
+    loadAppointments();
+  }, []);
 
   const isSlotTaken = (date, time) => {
     return appointments.some(
-      (appointment) => appointment.date === date.toDateString() && appointment.time === time
+      (appt) => 
+        appt.date === date.toDateString() &&
+        appt.time === time &&
+        appt.id !== (appointment ? appointment.id : null) // Ignora o próprio agendamento ao editar
     );
   };
 
@@ -33,7 +46,7 @@ const TelaAgendamentos = ({ navigation, appointments, setAppointments }) => {
 
   const formattedDate = format(date, "PPPP", { locale: ptBR });
 
-  const saveAppointment = () => {
+  const saveAppointment = async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -61,7 +74,6 @@ const TelaAgendamentos = ({ navigation, appointments, setAppointments }) => {
     }
 
     const newAppointment = {
-      id: Math.random().toString(),
       date: date.toDateString(),
       time: selectedTime,
       name,
@@ -69,7 +81,15 @@ const TelaAgendamentos = ({ navigation, appointments, setAppointments }) => {
       serviceDescription,
     };
 
-    const updatedAppointments = [...appointments, newAppointment];
+    if (appointment) {
+      // Atualizar agendamento existente
+      await updateAppointment(appointment.id, newAppointment);
+    } else {
+      // Adicionar novo agendamento
+      await addAppointment(newAppointment);
+    }
+
+    const updatedAppointments = await getAppointments();
     setAppointments(updatedAppointments);
     alert('Agendamento salvo com sucesso!');
     navigation.goBack();
@@ -78,7 +98,7 @@ const TelaAgendamentos = ({ navigation, appointments, setAppointments }) => {
   return (
     <View style={styles.container}>
       <ScrollView>
-        <Text style={styles.title}>Agende um atendimento</Text>
+        <Text style={styles.title}>{appointment ? 'Editar Agendamento' : 'Agende um atendimento'}</Text>
 
         <TextInput
           style={styles.input}
@@ -146,7 +166,7 @@ const TelaAgendamentos = ({ navigation, appointments, setAppointments }) => {
       </ScrollView>
 
       <TouchableOpacity style={styles.saveButton} onPress={saveAppointment}>
-        <Text style={styles.saveButtonText}>Agendar</Text>
+        <Text style={styles.saveButtonText}>{appointment ? 'Salvar Alterações' : 'Agendar'}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
