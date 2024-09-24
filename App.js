@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image, View, Text } from 'react-native';
 import TelaInicial from './Telas/TelaInicial';
 import TelaAgendamentos from './Telas/TelaAgendamento';
+import { getAppointments } from './database';
 
 const Stack = createStackNavigator();
 
@@ -25,10 +25,8 @@ export default function App() {
 
   useEffect(() => {
     const loadAppointments = async () => {
-      const storedAppointments = await AsyncStorage.getItem('@appointments');
-      if (storedAppointments) {
-        setAppointments(JSON.parse(storedAppointments));
-      }
+      const storedAppointments = await getAppointments();
+      setAppointments(storedAppointments);
     };
     loadAppointments();
   }, []);
