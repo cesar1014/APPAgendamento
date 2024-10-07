@@ -1,23 +1,3 @@
-<<<<<<< HEAD
-import React, { useState, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { Image, View, Text } from 'react-native';
-import TelaInicial from './Telas/TelaInicial';
-import TelaAgendamentos from './Telas/TelaAgendamento';
-import { getAppointments } from './database';
-
-const Stack = createStackNavigator();
-
-function LogoTitle() {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -40 }}>
-      <Image
-        source={require('./assets/icon.png')}
-        style={{ width: 100, height: 100, marginRight: -20 }}
-      />
-      <Text style={{ color: '#9282FA', fontWeight: 'bold', fontSize: 20 }}>IFPLANNER</Text>
-=======
 import React, { useContext, useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -72,17 +52,12 @@ function LogoTitle() {
         <Text style={styles.logoText}>IFPLANNER</Text>
       </View>
       <ToggleButton />
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
     </View>
   );
 }
 
-<<<<<<< HEAD
-export default function App() {
-=======
 function AppNavigator() {
   const { theme, isDarkMode } = useContext(ThemeContext);
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
   const [appointments, setAppointments] = useState([]);
 
   useEffect(() => {
@@ -93,42 +68,25 @@ function AppNavigator() {
     loadAppointments();
   }, []);
 
-<<<<<<< HEAD
-=======
   useEffect(() => {
     StatusBar.setBarStyle(isDarkMode ? 'light-content' : 'dark-content');
     StatusBar.setBackgroundColor(theme.headerBackground);
   }, [isDarkMode, theme.headerBackground]);
 
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
   return (
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
           headerStyle: {
-<<<<<<< HEAD
-            backgroundColor: '#151515',
-          },
-          headerTintColor: '#FFFFFF',
-=======
             backgroundColor: theme.headerBackground,
           },
           headerTintColor: theme.headerText,
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
         }}
       >
         <Stack.Screen
           name="Home"
           options={{ headerTitle: () => <LogoTitle /> }}
         >
-<<<<<<< HEAD
-          {props => <TelaInicial {...props} appointments={appointments} setAppointments={setAppointments} />}
-        </Stack.Screen>
-        <Stack.Screen
-          name="AGENDAMENTO"
-        >
-          {props => <TelaAgendamentos {...props} appointments={appointments} setAppointments={setAppointments} />}
-=======
           {props => (
             <TelaInicial {...props} appointments={appointments} setAppointments={setAppointments} />
           )}
@@ -140,22 +98,18 @@ function AppNavigator() {
               <Text style={[styles.logoText, { color: '#9282FA', fontWeight: 'bold' }]}>AGENDAMENTO</Text>
             ),
             headerStyle: {
-              backgroundColor: theme.headerBackground, // Usa a cor do fundo do tema
+              backgroundColor: theme.headerBackground,
             },
-            headerTintColor: theme.headerText, // Cor do texto no cabeçalho
+            headerTintColor: theme.headerText,
           }}
         >
           {props => (
             <TelaAgendamentos {...props} appointments={appointments} setAppointments={setAppointments} />
           )}
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   );
-<<<<<<< HEAD
-}
-=======
 }
 
 export default function App() {
@@ -210,4 +164,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 });
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
