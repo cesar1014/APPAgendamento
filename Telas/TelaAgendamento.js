@@ -106,6 +106,7 @@ const TelaAgendamentos = ({ route, navigation, appointments, setAppointments }) 
           style={[
             styles.input,
             { backgroundColor: theme.card, color: theme.text },
+            !isDarkMode && { borderWidth: 1, borderColor: '#ccc' }, // Borda no tema claro
             errors.name && styles.inputError
           ]}
           placeholder="Nome do Cliente"
@@ -117,7 +118,10 @@ const TelaAgendamentos = ({ route, navigation, appointments, setAppointments }) 
 
         <TouchableOpacity onPress={() => setShowDatePicker(true)}>
           <TextInput
-            style={[styles.input, { backgroundColor: theme.card, color: theme.text }]}
+            style={[styles.input, 
+              { backgroundColor: theme.card, color: theme.text },
+              !isDarkMode && { borderWidth: 1, borderColor: '#ccc' } // Borda no tema claro
+            ]}
             placeholder="Selecionar Data"
             placeholderTextColor={theme.text === '#000000' ? '#000000' : '#c7c7cc'}
             value={formattedDate}
@@ -139,6 +143,7 @@ const TelaAgendamentos = ({ route, navigation, appointments, setAppointments }) 
           style={[
             styles.input,
             { backgroundColor: theme.card, color: theme.text },
+            !isDarkMode && { borderWidth: 1, borderColor: '#ccc' }, // Borda no tema claro
             errors.phone && styles.inputError
           ]}
           placeholder="Número de Telefone"
@@ -153,6 +158,7 @@ const TelaAgendamentos = ({ route, navigation, appointments, setAppointments }) 
           style={[
             styles.descriptionInput,
             { backgroundColor: theme.card, color: theme.text },
+            !isDarkMode && { borderWidth: 1, borderColor: '#ccc' }, // Borda no tema claro
             errors.serviceDescription && styles.inputError
           ]}
           placeholder="Descrição do Serviço"
@@ -215,7 +221,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   inputError: {
-    borderColor: 'red',
+    borderColor: '#FF6F61', // Vermelho suave para erros
     borderWidth: 1,
   },
   descriptionInput: {
@@ -239,17 +245,19 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
     marginBottom: 15,
-    borderRadius: 8, 
+    borderRadius: 8,
+    elevation: 3, // Sombra para o botão
   },
   saveButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
   },
   clearButton: {
-    backgroundColor: 'brown',
+    backgroundColor: '#FF6F61', // Botão de limpar
     padding: 15,
     alignItems: 'center',
     borderRadius: 8,
+    elevation: 2, // Sombra para o botão
   },
   clearButtonText: {
     fontSize: 16,
