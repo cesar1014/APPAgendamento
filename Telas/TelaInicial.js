@@ -1,29 +1,17 @@
-<<<<<<< HEAD
-import React, { useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { format, isSameDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { getAppointments, deleteAppointment } from '../database';
-=======
 import React, { useContext, useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getAppointments, deleteAppointment } from '../database';
-import { ThemeContext } from './tema'; // Use o contexto de tema
+import { ThemeContext } from './tema';
 import DateTimePicker from '@react-native-community/datetimepicker';
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
 
 const getPeriodIcon = (time) => {
   const [hour] = time.split(':').map(Number);
   if (hour >= 8 && hour < 12) {
     return { icon: '🌅', period: 'Manhã' };
   } else if (hour >= 12 && hour < 18) {
-<<<<<<< HEAD
-    return { icon: '🌞', period: 'Tarde' };
-=======
     return { icon: '🌇', period: 'Tarde' };
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
   } else if (hour >= 18 && hour <= 20) {
     return { icon: '🌙', period: 'Noite' };
   }
@@ -31,25 +19,6 @@ const getPeriodIcon = (time) => {
 };
 
 const AppointmentCard = ({ appointment, onEdit, onDelete }) => {
-<<<<<<< HEAD
-  const { icon, period } = getPeriodIcon(appointment.time);
-  const [showActions, setShowActions] = React.useState(false);
-
-  return (
-    <TouchableOpacity onPress={() => setShowActions(!showActions)}>
-      <View style={styles.card}>
-        <View style={styles.header}>
-          <Text style={styles.periodText}>
-            {icon} {period}
-          </Text>
-          <Text style={styles.cardTime}>
-            {appointment.time}
-            {!isSameDay(new Date(appointment.date), new Date()) && (
-              <Text style={styles.dateText}>
-                {' '}
-                {format(new Date(appointment.date), 'dd/MM', { locale: ptBR })}
-              </Text>
-=======
   const { theme, isDarkMode } = useContext(ThemeContext);
   const { icon, period } = getPeriodIcon(appointment.time);
   const [showActions, setShowActions] = useState(false);
@@ -63,24 +32,10 @@ const AppointmentCard = ({ appointment, onEdit, onDelete }) => {
             {appointment.time}
             {!isSameDay(new Date(appointment.date), new Date()) && (
               <Text style={styles.dateText}> {format(new Date(appointment.date), 'dd/MM', { locale: ptBR })}</Text>
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
             )}
           </Text>
         </View>
         <View style={styles.cardContent}>
-<<<<<<< HEAD
-          <Text style={styles.cardTitle}>
-            {appointment.name} ({appointment.phone})
-          </Text>
-          <Text style={styles.cardDescription}>{appointment.serviceDescription}</Text>
-          {showActions && (
-            <View style={styles.actionButtons}>
-              <TouchableOpacity onPress={() => onEdit(appointment)}>
-                <Text style={styles.editText}>Alterar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => onDelete(appointment)}>
-                <Text style={styles.removeText}>Excluir</Text>
-=======
           <Text style={[styles.cardTitle, { color: theme.text }]}>{appointment.name} ({appointment.phone})</Text>
           <Text style={[styles.cardDescription, { color: isDarkMode ? '#9282FA' : theme.subText }]}>
             {appointment.serviceDescription}
@@ -92,7 +47,6 @@ const AppointmentCard = ({ appointment, onEdit, onDelete }) => {
               </TouchableOpacity>
               <TouchableOpacity onPress={() => onDelete(appointment)}>
                 <Text style={[styles.removeText, { color: 'red' }]}>Excluir</Text>
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
               </TouchableOpacity>
             </View>
           )}
@@ -103,27 +57,6 @@ const AppointmentCard = ({ appointment, onEdit, onDelete }) => {
 };
 
 export default function TelaInicial({ navigation, appointments, setAppointments }) {
-<<<<<<< HEAD
-  useEffect(() => {
-    const loadAppointments = async () => {
-      const storedAppointments = await getAppointments();
-
-      // Ordena os agendamentos pelo mais próximo (data e hora)
-      const sortedAppointments = storedAppointments.sort((a, b) => {
-        // Converte a data e hora para objetos Date para comparação
-        const dateA = new Date(`${a.date}T${a.time}`);
-        const dateB = new Date(`${b.date}T${b.time}`);
-        return dateA - dateB; // Ordena do mais próximo para o mais distante
-      });
-
-      // Atualiza o estado com os agendamentos ordenados
-      setAppointments(sortedAppointments);
-    };
-
-    loadAppointments();
-  }, []);
-
-=======
   const { theme } = useContext(ThemeContext);
   const [selectedDate, setSelectedDate] = useState(null);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
@@ -179,25 +112,10 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
     );
   };
 
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
   const handleEdit = (appointment) => {
     navigation.navigate('AGENDAMENTO', { appointment });
   };
 
-<<<<<<< HEAD
-  const handleDelete = async (appointment) => {
-    await deleteAppointment(appointment.id);
-    const updatedAppointments = await getAppointments();
-    setAppointments(updatedAppointments);
-    Alert.alert("Sucesso", `Agendamento excluído: ${appointment.name}`);
-  };
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Sua agenda</Text>
-      <FlatList
-        data={appointments}
-=======
   const clearFilter = () => {
     setSelectedDate(null);
   };
@@ -238,7 +156,6 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
 
       <FlatList
         data={filteredAppointments}
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <AppointmentCard
@@ -247,14 +164,6 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
             onDelete={handleDelete}
           />
         )}
-<<<<<<< HEAD
-      />
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('AGENDAMENTO')}
-      >
-        <Text style={styles.buttonText}>Novo Agendamento</Text>
-=======
         ListEmptyComponent={() => (
           <Text style={[styles.emptyText, { color: theme.text }]}>
             Nenhum agendamento encontrado.
@@ -267,7 +176,6 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
         onPress={() => navigation.navigate('AGENDAMENTO')}
       >
         <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Novo Agendamento</Text>
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
       </TouchableOpacity>
     </View>
   );
@@ -277,18 +185,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-<<<<<<< HEAD
-    backgroundColor: '#151515',
-  },
-  title: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    marginBottom: 20,
-    fontWeight: 'bold',
-  },
-  card: {
-    backgroundColor: '#23242C',
-=======
   },
   title: {
     fontSize: 24,
@@ -300,7 +196,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   card: {
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
     borderRadius: 8,
     padding: 15,
     marginBottom: 10,
@@ -316,35 +211,18 @@ const styles = StyleSheet.create({
   },
   periodText: {
     fontSize: 14,
-<<<<<<< HEAD
-    color: '#FFFFFF',
-    opacity: 0.9,
   },
   cardTime: {
     fontSize: 16,
-    color: '#FFFFFF',
-=======
-  },
-  cardTime: {
-    fontSize: 16,
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
     fontWeight: 'bold',
   },
   cardTitle: {
     fontSize: 16,
-<<<<<<< HEAD
-    color: '#FFFFFF',
-=======
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
     fontWeight: 'bold',
     marginTop: 5,
   },
   cardDescription: {
     fontSize: 14,
-<<<<<<< HEAD
-    color: '#BDB4FA',
-=======
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
     marginTop: 5,
   },
   actionButtons: {
@@ -352,37 +230,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 10,
   },
-<<<<<<< HEAD
-  editText: {
-    color: '#027DF0',
-    fontSize: 14,
-  },
-  removeText: {
-    color: '#F09102',
-    fontSize: 14,
-  },
   button: {
-    backgroundColor: '#9282FA',
-=======
-  button: {
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
     padding: 15,
     alignItems: 'center',
     borderRadius: 8,
     marginTop: 20,
-<<<<<<< HEAD
+    backgroundColor: '#8A2BE2',
   },
   buttonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-=======
-    backgroundColor: '#8A2BE2', // Cor roxa para o botão "Novo Agendamento"
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF', // Texto branco para melhor contraste
   },
   filterText: {
     fontSize: 18,
@@ -410,11 +268,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 10,
     alignItems: 'center',
-    backgroundColor: '#8A2BE2', // Cor roxa para o botão "Mostrar Todos"
+    backgroundColor: '#8A2BE2',
   },
   clearFilterText: {
     fontSize: 16,
-    color: '#FFFFFF', // Texto branco para melhor contraste
->>>>>>> 654615f (Atualizaçao do código,tenho que  verificar o calendario novamente)
+    color: '#FFFFFF',
   },
 });
