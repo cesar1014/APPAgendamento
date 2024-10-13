@@ -1,11 +1,39 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Image, View, Text, TouchableOpacity, StyleSheet, Animated, StatusBar } from 'react-native';
+
+import {
+  Image,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  StatusBar,
+  ActivityIndicator,
+} from 'react-native';
+
 import TelaInicial from './Telas/TelaInicial';
 import TelaAgendamentos from './Telas/TelaAgendamento';
-import { getAppointments } from './database';
+import TelaServicos from './Telas/TelaServicos';
+import TelaColaboradores from './Telas/TelaColaboradores';
+import TelaGerenciar from './Telas/TelaGerenciar';
+
+import {
+  createTablesIfNeeded,
+  getAppointments,
+  checkTablesExist,
+  initializeDefaultServices,
+  resetServiceFavorites, // Importado
+} from './database';
 import { ThemeProvider, ThemeContext } from './Telas/tema';
+
+// Desativa logs no ambiente de produção
+if (!__DEV__) {
+  console.log = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+}
 
 const Stack = createStackNavigator();
 
@@ -35,7 +63,9 @@ function ToggleButton() {
     <TouchableOpacity onPress={toggleTheme} style={styles.toggleWrapper}>
       <Text style={styles.iconText}>{isDarkMode ? '🌙' : '🌞'}</Text>
       <Animated.View style={[styles.toggleContainer, { backgroundColor }]}>
-        <Animated.View style={[styles.toggleBall, { transform: [{ translateX }] }]} />
+        <Animated.View
+          style={[styles.toggleBall, { transform: [{ translateX }] }]}
+        />
       </Animated.View>
     </TouchableOpacity>
   );
@@ -45,10 +75,7 @@ function LogoTitle() {
   return (
     <View style={styles.headerContainer}>
       <View style={styles.logoTitleContainer}>
-        <Image
-          source={require('./assets/icon.png')}
-          style={styles.logo}
-        />
+        <Image source={require('./assets/icon.png')} style={styles.logo} />
         <Text style={styles.logoText}>IFPLANNER</Text>
       </View>
       <ToggleButton />
@@ -56,22 +83,12 @@ function LogoTitle() {
   );
 }
 
-function AppNavigator() {
+function AppNavigator({ appointments, setAppointments }) {
   const { theme, isDarkMode } = useContext(ThemeContext);
-  const [appointments, setAppointments] = useState([]);
-
-  useEffect(() => {
-    const loadAppointments = async () => {
-      const storedAppointments = await getAppointments();
-      setAppointments(storedAppointments);
-    };
-    loadAppointments();
-  }, []);
 
   useEffect(() => {
     StatusBar.setBarStyle(isDarkMode ? 'light-content' : 'dark-content');
-    StatusBar.setBackgroundColor(theme.headerBackground);
-  }, [isDarkMode, theme.headerBackground]);
+  }, [isDarkMode]);
 
   return (
     <NavigationContainer>
@@ -87,15 +104,26 @@ function AppNavigator() {
           name="Home"
           options={{ headerTitle: () => <LogoTitle /> }}
         >
-          {props => (
-            <TelaInicial {...props} appointments={appointments} setAppointments={setAppointments} />
+          {(props) => (
+            <TelaInicial
+              {...props}
+              appointments={appointments}
+              setAppointments={setAppointments}
+            />
           )}
         </Stack.Screen>
         <Stack.Screen
           name="AGENDAMENTO"
           options={{
             headerTitle: () => (
-              <Text style={[styles.logoText, { color: '#9282FA', fontWeight: 'bold' }]}>AGENDAMENTO</Text>
+              <Text
+                style={[
+                  styles.logoText,
+                  { color: '#9282FA', fontWeight: 'bold' },
+                ]}
+              >
+                AGENDAMENTO
+              </Text>
             ),
             headerStyle: {
               backgroundColor: theme.headerBackground,
@@ -103,19 +131,85 @@ function AppNavigator() {
             headerTintColor: theme.headerText,
           }}
         >
-          {props => (
-            <TelaAgendamentos {...props} appointments={appointments} setAppointments={setAppointments} />
+          {(props) => (
+            <TelaAgendamentos
+              {...props}
+              appointments={appointments}
+              setAppointments={setAppointments}
+            />
           )}
         </Stack.Screen>
+        <Stack.Screen
+          name="GERENCIAR"
+          component={TelaGerenciar}
+          options={{
+            headerTitle: 'Gerenciar',
+          }}
+        />
+        <Stack.Screen
+          name="SERVIÇOS"
+          component={TelaServicos}
+          options={{
+            headerTitle: 'Gerenciar Serviços',
+          }}
+        />
+        <Stack.Screen
+          name="COLABORADORES"
+          component={TelaColaboradores}
+          options={{
+            headerTitle: 'Gerenciar Colaboradores',
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
 
 export default function App() {
+  const [isDbReady, setIsDbReady] = useState(false);
+  const [appointments, setAppointments] = useState([]);
+
+  useEffect(() => {
+    const initializeDatabase = async () => {
+      try {
+        await createTablesIfNeeded();
+        await checkTablesExist(); // Verifica se as tabelas foram criadas
+
+        // Inicializa os serviços padrão
+        await initializeDefaultServices();
+        await resetServiceFavorites(); // Reseta favoritos dos serviços
+
+        // Agora que o banco de dados está pronto, podemos carregar os agendamentos
+        const storedAppointments = await getAppointments();
+        setAppointments(storedAppointments);
+
+        setIsDbReady(true);
+      } catch (error) {
+        console.error('Erro ao inicializar o banco de dados:', error);
+      }
+    };
+    initializeDatabase();
+  }, []);
+
+  const handleSetAppointments = useCallback((newAppointments) => {
+    setAppointments(newAppointments);
+  }, []);
+
+  if (!isDbReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+        <Text>Inicializando banco de dados...</Text>
+      </View>
+    );
+  }
+
   return (
     <ThemeProvider>
-      <AppNavigator />
+      <AppNavigator
+        appointments={appointments}
+        setAppointments={handleSetAppointments}
+      />
     </ThemeProvider>
   );
 }
