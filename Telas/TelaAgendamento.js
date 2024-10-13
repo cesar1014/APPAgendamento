@@ -1,267 +1,502 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Alert } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
-import { format, isBefore } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { addAppointment, updateAppointment, getAppointments } from '../database';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import { ThemeContext } from './tema';
+import {
+  addAppointment,
+  updateAppointment,
+  getAppointments,
+  getServices,
+  getColaboradores,
+  getColaboradoresForService, // Importado
+} from '../database';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import RNPickerSelect from 'react-native-picker-select';
 
-const TelaAgendamentos = ({ route, navigation, appointments, setAppointments }) => {
+export default function TelaAgendamento({
+  route,
+  navigation,
+  appointments,
+  setAppointments,
+}) {
   const { theme, isDarkMode } = useContext(ThemeContext);
-  const { appointment } = route.params || {};
-  const [date, setDate] = useState(appointment ? new Date(appointment.date) : new Date());
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [serviceDescription, setServiceDescription] = useState(null);
+  const [date, setDate] = useState(new Date());
+  const [selectedTime, setSelectedTime] = useState('08:00');
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedTime, setSelectedTime] = useState(appointment ? appointment.time : "08:00");
-  const [name, setName] = useState(appointment ? appointment.name : "");
-  const [phone, setPhone] = useState(appointment ? appointment.phone : "");
-  const [serviceDescription, setServiceDescription] = useState(appointment ? appointment.serviceDescription : "");
+  const [services, setServices] = useState([]);
+  const [colaboradores, setColaboradores] = useState([]);
+  const [allColaboradores, setAllColaboradores] = useState([]); // Todos os colaboradores
+  const [colaboradorId, setColaboradorId] = useState(null);
   const [errors, setErrors] = useState({});
 
-  useEffect(() => {
-    StatusBar.setBarStyle(isDarkMode ? 'light-content' : 'dark-content');
-    StatusBar.setBackgroundColor(isDarkMode ? '#121212' : '#FFFFFF');
-  }, [isDarkMode]);
+  const { appointment } = route.params || {};
 
-  const onDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setDate(selectedDate);
+  useEffect(() => {
+    const loadServicesAndColaboradores = async () => {
+      const storedServices = await getServices();
+      setServices(storedServices);
+
+      const storedColaboradores = await getColaboradores();
+      setAllColaboradores(storedColaboradores); // Armazenamos todos os colaboradores
+      setColaboradores(storedColaboradores); // Inicialmente, todos os colaboradores
+    };
+
+    loadServicesAndColaboradores();
+  }, []);
+
+  useEffect(() => {
+    if (appointment) {
+      setName(appointment.name);
+      setPhone(appointment.phone);
+      setServiceDescription(appointment.serviceDescription);
+      setDate(new Date(appointment.date));
+      setSelectedTime(appointment.time);
+      setColaboradorId(appointment.colaboradorId);
+    }
+  }, [appointment]);
+
+  // Novo useEffect para atualizar a lista de colaboradores quando o serviço selecionado mudar
+  useEffect(() => {
+    const updateColaboradoresList = async () => {
+      if (serviceDescription) {
+        // Obter o ID do serviço selecionado
+        const selectedService = services.find(
+          (service) => service.serviceName === serviceDescription
+        );
+
+        if (selectedService) {
+          // Obter colaboradores associados ao serviço
+          const associatedColaboradores = await getColaboradoresForService(
+            selectedService.id
+          );
+
+          // Filtrar colaboradores não associados
+          const nonAssociatedColaboradores = allColaboradores.filter(
+            (colaborador) =>
+              !associatedColaboradores.some(
+                (assocColab) => assocColab.id === colaborador.id
+              )
+          );
+
+          // Ordenar as duas listas por nome
+          associatedColaboradores.sort((a, b) =>
+            a.nome.localeCompare(b.nome)
+          );
+          nonAssociatedColaboradores.sort((a, b) =>
+            a.nome.localeCompare(b.nome)
+          );
+
+          // Combinar as listas, com os associados primeiro
+          const combinedList = [
+            ...associatedColaboradores,
+            ...nonAssociatedColaboradores,
+          ];
+
+          setColaboradores(combinedList);
+        }
+      } else {
+        // Se nenhum serviço estiver selecionado, mostrar todos os colaboradores em ordem alfabética
+        const sortedColaboradores = [...allColaboradores].sort((a, b) =>
+          a.nome.localeCompare(b.nome)
+        );
+        setColaboradores(sortedColaboradores);
+      }
+    };
+
+    updateColaboradoresList();
+  }, [serviceDescription, services, allColaboradores]);
+
+  const handleDateChange = (event, selectedDate) => {
+    if (event.type === 'set') {
+      setShowDatePicker(false);
+      if (selectedDate) {
+        setDate(selectedDate);
+      }
+    } else {
+      setShowDatePicker(false);
     }
   };
 
-  const formattedDate = format(date, "PPPP", { locale: ptBR });
-
   const validateInputs = () => {
     const newErrors = {};
-    if (!name) newErrors.name = "Nome é obrigatório.";
-    if (!phone || phone.length !== 11) newErrors.phone = "O número deve conter 11 dígitos.";
-    if (!serviceDescription) newErrors.serviceDescription = "Descrição é obrigatória.";
+    if (!name.trim()) newErrors.name = 'Nome é obrigatório.';
+    if (!phone.trim()) newErrors.phone = 'Telefone é obrigatório.';
+    if (!serviceDescription) newErrors.service = 'Serviço é obrigatório.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validateInputs()) {
+      return;
+    }
+
+    const appointmentData = {
+      name,
+      phone,
+      serviceDescription,
+      date: date.toISOString().split('T')[0],
+      time: selectedTime,
+      colaboradorId,
+    };
+
+    try {
+      const existingAppointments = await getAppointments();
+      const isConflict = existingAppointments.some(
+        (app) =>
+          app.date === appointmentData.date &&
+          app.time === appointmentData.time &&
+          app.id !== (appointment ? appointment.id : null)
+      );
+
+      if (isConflict) {
+        Alert.alert(
+          'Conflito de horário',
+          'Já existe um agendamento para este horário. Deseja continuar?',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Continuar',
+              onPress: async () => {
+                if (appointment) {
+                  await updateAppointment(appointment.id, appointmentData);
+                } else {
+                  await addAppointment(appointmentData);
+                }
+                const updatedAppointments = await getAppointments();
+                setAppointments(updatedAppointments);
+                navigation.goBack();
+              },
+            },
+          ]
+        );
+      } else {
+        if (appointment) {
+          await updateAppointment(appointment.id, appointmentData);
+          Alert.alert('Sucesso', 'Agendamento atualizado com sucesso.');
+        } else {
+          await addAppointment(appointmentData);
+          Alert.alert('Sucesso', 'Agendamento criado com sucesso.');
+        }
+        const updatedAppointments = await getAppointments();
+        setAppointments(updatedAppointments);
+        navigation.goBack();
+      }
+    } catch (error) {
+      Alert.alert('Erro', error.message);
+    }
   };
 
   const clearFields = () => {
     setName('');
     setPhone('');
-    setServiceDescription('');
+    setServiceDescription(null);
     setDate(new Date());
-    setSelectedTime("08:00");
+    setSelectedTime('08:00');
+    setColaboradorId(null);
+    setErrors({});
   };
 
-  const saveAppointment = async () => {
-    if (!validateInputs()) return;
+  // Opções para o Picker de serviços
+  const serviceOptions = services.map((service) => ({
+    label: service.serviceName,
+    value: service.serviceName,
+    key: service.id,
+  }));
 
-    const newAppointment = {
-      date: date.toISOString().split('T')[0],
-      time: selectedTime,
-      name,
-      phone,
-      serviceDescription,
-    };
+  // Opções para o Picker de colaboradores
+  const colaboradorOptions = colaboradores.map((colaborador) => ({
+    label: colaborador.nome,
+    value: colaborador.id,
+    key: colaborador.id,
+  }));
 
-    const existingAppointments = await getAppointments();
-    const conflict = existingAppointments.some((app) =>
-      app.date === newAppointment.date && app.time === newAppointment.time && app.id !== (appointment ? appointment.id : null)
-    );
-
-    if (conflict) {
-      Alert.alert(
-        "Conflito de horário",
-        "Já existe um agendamento para esse horário. Deseja continuar mesmo assim?",
-        [
-          { text: "Cancelar", style: "cancel" },
-          { text: "Continuar", onPress: () => saveConfirmedAppointment(newAppointment) },
-        ]
-      );
-    } else {
-      saveConfirmedAppointment(newAppointment);
-    }
-  };
-
-  const saveConfirmedAppointment = async (newAppointment) => {
-    if (isBefore(new Date(newAppointment.date), new Date())) {
-      Alert.alert("Atenção", "Você está marcando um agendamento no passado.");
-    }
-
-    if (appointment) {
-      await updateAppointment(appointment.id, newAppointment);
-      Alert.alert("Sucesso", "Agendamento atualizado com sucesso!");
-    } else {
-      await addAppointment(newAppointment);
-      Alert.alert("Sucesso", "Novo agendamento criado com sucesso!");
-    }
-
-    const updatedAppointments = await getAppointments();
-    setAppointments(updatedAppointments);
-    navigation.goBack();
-  };
+  // Opções para o Picker de horários
+  const timeOptions = [
+    '08:00',
+    '08:30',
+    '09:00',
+    '09:30',
+    '10:00',
+    '10:30',
+    '11:00',
+    '11:30',
+    '12:00',
+    '12:30',
+    '13:00',
+    '13:30',
+    '14:00',
+    '14:30',
+    '15:00',
+    '15:30',
+    '16:00',
+    '16:30',
+    '17:00',
+    '17:30',
+    '18:00',
+    '18:30',
+    '19:00',
+    '19:30',
+    '20:00',
+  ].map((time) => ({ label: time, value: time }));
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView>
-        <Text style={[styles.title, { color: theme.text }]}>{appointment ? 'Editar Agendamento' : 'Agende um atendimento'}</Text>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { backgroundColor: theme.background },
+      ]}
+    >
+      <TextInput
+        style={[
+          styles.input,
+          { backgroundColor: theme.card, color: theme.text },
+          !isDarkMode && { borderWidth: 1, borderColor: '#ccc' },
+          errors.name && styles.inputError,
+        ]}
+        placeholder="Nome do Cliente"
+        placeholderTextColor={isDarkMode ? '#c7c7cc' : '#7c7c7c'}
+        value={name}
+        onChangeText={setName}
+      />
+      {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
 
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: theme.card, color: theme.text },
-            !isDarkMode && { borderWidth: 1, borderColor: '#ccc' }, // Borda no tema claro
-            errors.name && styles.inputError
-          ]}
-          placeholder="Nome do Cliente"
-          placeholderTextColor={theme.text === '#000000' ? '#000000' : '#c7c7cc'}
-          onChangeText={setName}
-          value={name}
-        />
-        {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+      <TextInput
+        style={[
+          styles.input,
+          { backgroundColor: theme.card, color: theme.text },
+          !isDarkMode && { borderWidth: 1, borderColor: '#ccc' },
+          errors.phone && styles.inputError,
+        ]}
+        placeholder="Telefone"
+        placeholderTextColor={isDarkMode ? '#c7c7cc' : '#7c7c7c'}
+        value={phone}
+        onChangeText={setPhone}
+        keyboardType="phone-pad"
+      />
+      {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
 
-        <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-          <TextInput
-            style={[styles.input, 
-              { backgroundColor: theme.card, color: theme.text },
-              !isDarkMode && { borderWidth: 1, borderColor: '#ccc' } // Borda no tema claro
-            ]}
-            placeholder="Selecionar Data"
-            placeholderTextColor={theme.text === '#000000' ? '#000000' : '#c7c7cc'}
-            value={formattedDate}
-            editable={false}
-          />
-        </TouchableOpacity>
-
-        {showDatePicker && (
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display="default"
-            onChange={onDateChange}
-            locale="pt-BR"
-          />
-        )}
-
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: theme.card, color: theme.text },
-            !isDarkMode && { borderWidth: 1, borderColor: '#ccc' }, // Borda no tema claro
-            errors.phone && styles.inputError
-          ]}
-          placeholder="Número de Telefone"
-          placeholderTextColor={theme.text === '#000000' ? '#000000' : '#c7c7cc'}
-          onChangeText={setPhone}
-          value={phone}
-          keyboardType="phone-pad"
-        />
-        {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
-
-        <TextInput
-          style={[
-            styles.descriptionInput,
-            { backgroundColor: theme.card, color: theme.text },
-            !isDarkMode && { borderWidth: 1, borderColor: '#ccc' }, // Borda no tema claro
-            errors.serviceDescription && styles.inputError
-          ]}
-          placeholder="Descrição do Serviço"
-          placeholderTextColor={theme.text === '#000000' ? '#000000' : '#c7c7cc'}
-          onChangeText={setServiceDescription}
+      <Text style={[styles.label, { color: theme.text }]}>
+        Selecione o serviço:
+      </Text>
+      <View style={[styles.pickerContainer]}>
+        <RNPickerSelect
+          placeholder={{
+            label: 'Selecione o serviço',
+            value: null,
+            color: isDarkMode ? '#c7c7cc' : '#7c7c7c',
+          }}
+          items={serviceOptions}
+          onValueChange={(value) => setServiceDescription(value)}
+          style={{
+            inputIOS: {
+              color: theme.text,
+              padding: 15,
+              backgroundColor: theme.card,
+              borderRadius: 8,
+              fontSize: 16,
+              height: 50,
+            },
+            inputAndroid: {
+              color: theme.text,
+              backgroundColor: theme.card,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              borderRadius: 8,
+              fontSize: 16,
+              height: 50,
+            },
+            placeholder: {
+              color: isDarkMode ? '#c7c7cc' : '#7c7c7c',
+            },
+          }}
           value={serviceDescription}
-          multiline
+          useNativeAndroidPickerStyle={false}
+          Icon={() => null}
         />
-        {errors.serviceDescription && <Text style={styles.errorText}>{errors.serviceDescription}</Text>}
+      </View>
+      {errors.service && <Text style={styles.errorText}>{errors.service}</Text>}
 
-        <Text style={[styles.label, { color: theme.text }]}>Selecione o horário:</Text>
-        <Picker
-          selectedValue={selectedTime}
-          style={[styles.picker, { backgroundColor: theme.card }]}
-          onValueChange={(itemValue) => setSelectedTime(itemValue)}
-        >
-          {["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", 
-            "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", 
-            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", 
-            "20:00"].map(time => (
-            <Picker.Item
-              key={time}
-              label={time}
-              value={time}
-              color={time === selectedTime ? (theme.text === '#000000' ? '#000' : 'gray') : '#000000'}
+      {/* Mostrar o Picker de Colaboradores apenas se houver colaboradores */}
+      {colaboradores.length > 0 && (
+        <>
+          <Text style={[styles.label, { color: theme.text }]}>
+            Selecione o colaborador:
+          </Text>
+          <View style={[styles.pickerContainer]}>
+            <RNPickerSelect
+              placeholder={{
+                label: 'Selecione o colaborador',
+                value: null,
+                color: isDarkMode ? '#c7c7cc' : '#7c7c7c',
+              }}
+              items={colaboradorOptions}
+              onValueChange={(value) => setColaboradorId(value)}
+              style={{
+                inputIOS: {
+                  color: theme.text,
+                  padding: 15,
+                  backgroundColor: theme.card,
+                  borderRadius: 8,
+                  fontSize: 16,
+                  height: 50,
+                },
+                inputAndroid: {
+                  color: theme.text,
+                  backgroundColor: theme.card,
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                  fontSize: 16,
+                  height: 50,
+                },
+                placeholder: {
+                  color: isDarkMode ? '#c7c7cc' : '#7c7c7c',
+                },
+              }}
+              value={colaboradorId}
+              useNativeAndroidPickerStyle={false}
+              Icon={() => null}
             />
-          ))}
-        </Picker>
+          </View>
+          {errors.colaborador && (
+            <Text style={styles.errorText}>{errors.colaborador}</Text>
+          )}
+        </>
+      )}
 
-        <Text style={[styles.selectedText, { color: theme.text }]}>Horário selecionado: {selectedTime}</Text>
-      </ScrollView>
+      <Text style={[styles.label, { color: theme.text }]}>Data:</Text>
+      <TouchableOpacity
+        style={[
+          styles.dateButton,
+          {
+            backgroundColor: theme.card,
+            borderColor: isDarkMode ? '#444' : '#ccc',
+            borderWidth: 1,
+            borderRadius: 8,
+          },
+        ]}
+        onPress={() => setShowDatePicker(true)}
+      >
+        <Text style={{ color: theme.text, fontSize: 16 }}>
+          {date.toLocaleDateString('pt-BR')}
+        </Text>
+      </TouchableOpacity>
+      {showDatePicker && (
+        <DateTimePicker
+          value={date}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+          locale="pt-BR"
+          themeVariant={isDarkMode ? 'dark' : 'light'}
+        />
+      )}
 
-      <TouchableOpacity style={[styles.saveButton, { backgroundColor: '#8A2BE2' }]} onPress={saveAppointment}>
-        <Text style={[styles.saveButtonText, { color: theme.buttonText }]}>
+      <Text style={[styles.label, { color: theme.text }]}>
+        Selecione o horário:
+      </Text>
+      <View style={[styles.pickerContainer]}>
+        <RNPickerSelect
+          placeholder={{}}
+          items={timeOptions}
+          onValueChange={(value) => setSelectedTime(value)}
+          style={{
+            inputIOS: {
+              color: theme.text,
+              padding: 15,
+              backgroundColor: theme.card,
+              borderRadius: 8,
+              fontSize: 16,
+              height: 50,
+            },
+            inputAndroid: {
+              color: theme.text,
+              backgroundColor: theme.card,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              borderRadius: 8,
+              fontSize: 16,
+              height: 50,
+            },
+          }}
+          value={selectedTime}
+          useNativeAndroidPickerStyle={false}
+          Icon={() => null}
+        />
+      </View>
+
+      <TouchableOpacity
+        onPress={handleSave}
+        style={[styles.button, { backgroundColor: '#8A2BE2' }]}
+      >
+        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
           {appointment ? 'Salvar Alterações' : 'Agendar'}
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.clearButton} onPress={clearFields}>
-        <Text style={styles.clearButtonText}>Limpar Campos</Text>
+      <TouchableOpacity
+        onPress={clearFields}
+        style={[styles.button, { backgroundColor: '#FF6F61', marginTop: 10 }]}
+      >
+        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+          Limpar Campos
+        </Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: 20,
-    justifyContent: 'space-between',
-  },
-  title: {
-    fontSize: 24,
-    marginBottom: 20,
-    fontWeight: 'bold',
+    flexGrow: 1,
   },
   input: {
-    padding: 10,
+    padding: 15,
     borderRadius: 8,
-    marginBottom: 5,
+    marginBottom: 15,
+    fontSize: 16,
+    height: 50,
   },
   inputError: {
-    borderColor: '#FF6F61', // Vermelho suave para erros
+    borderColor: '#FF6F61',
     borderWidth: 1,
-  },
-  descriptionInput: {
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 5,
-    height: 120,
   },
   label: {
     fontSize: 18,
     marginBottom: 10,
   },
-  picker: {
-    marginBottom: 20,
-  },
-  selectedText: {
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  saveButton: {
+  dateButton: {
     padding: 15,
+    marginBottom: 15,
     alignItems: 'center',
+    height: 50,
+    justifyContent: 'center',
+  },
+  pickerContainer: {
     marginBottom: 15,
     borderRadius: 8,
-    elevation: 3, // Sombra para o botão
+    overflow: 'hidden',
   },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  clearButton: {
-    backgroundColor: '#FF6F61', // Botão de limpar
+  button: {
     padding: 15,
-    alignItems: 'center',
     borderRadius: 8,
-    elevation: 2, // Sombra para o botão
+    alignItems: 'center',
+    marginTop: 20,
   },
-  clearButtonText: {
-    fontSize: 16,
-    color: '#FFFFFF',
+  buttonText: {
     fontWeight: 'bold',
   },
   errorText: {
@@ -269,5 +504,3 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 });
-
-export default TelaAgendamentos;

@@ -1,10 +1,20 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
-import { format, isSameDay } from 'date-fns';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Image,
+  StatusBar,
+} from 'react-native';
+import { format, isSameDay, parseISO, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getAppointments, deleteAppointment } from '../database';
 import { ThemeContext } from './tema';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Toast from 'react-native-toast-message';
 
 const getPeriodIcon = (time) => {
   const [hour] = time.split(':').map(Number);
@@ -23,27 +33,61 @@ const AppointmentCard = ({ appointment, onEdit, onDelete }) => {
   const { icon, period } = getPeriodIcon(appointment.time);
   const [showActions, setShowActions] = useState(false);
 
+  const currentDateTime = new Date();
+  const appointmentDateTime = parseISO(`${appointment.date}T${appointment.time}`);
+  const isPast = isBefore(appointmentDateTime, currentDateTime);
+
+  const cardBackgroundColor = isPast
+    ? isDarkMode
+      ? '#541B1B'
+      : '#FFB6C1'
+    : theme.card;
+
   return (
     <TouchableOpacity onPress={() => setShowActions(!showActions)}>
-      <View style={[styles.card, { backgroundColor: theme.card }]}>
+      <View style={[styles.card, { backgroundColor: cardBackgroundColor }]}>
         <View style={styles.header}>
-          <Text style={[styles.periodText, { color: theme.text }]}>{icon} {period}</Text>
+          <Text style={[styles.periodText, { color: theme.text }]}>
+            {icon} {period}
+          </Text>
           <Text style={[styles.cardTime, { color: theme.text }]}>
             {appointment.time}
             {!isSameDay(new Date(appointment.date), new Date()) && (
-              <Text style={styles.dateText}> {format(new Date(appointment.date), 'dd/MM', { locale: ptBR })}</Text>
+              <Text style={styles.dateText}>
+                {' '}
+                {format(new Date(appointment.date), 'dd/MM', { locale: ptBR })}
+              </Text>
             )}
           </Text>
         </View>
         <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>{appointment.name} ({appointment.phone})</Text>
-          <Text style={[styles.cardDescription, { color: isDarkMode ? '#9282FA' : theme.subText }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>
+            {appointment.name} ({appointment.phone})
+          </Text>
+          <Text
+            style={[
+              styles.cardDescription,
+              { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' },
+            ]}
+          >
             {appointment.serviceDescription}
           </Text>
+          {appointment.colaboradorNome && (
+            <Text
+              style={[
+                styles.colaboradorText,
+                { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' },
+              ]}
+            >
+              Colaborador: {appointment.colaboradorNome}
+            </Text>
+          )}
           {showActions && (
             <View style={styles.actionButtons}>
               <TouchableOpacity onPress={() => onEdit(appointment)}>
-                <Text style={[styles.editText, { color: theme.buttonBackground }]}>Alterar</Text>
+                <Text style={[styles.editText, { color: theme.buttonBackground }]}>
+                  Alterar
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => onDelete(appointment)}>
                 <Text style={[styles.removeText, { color: 'red' }]}>Excluir</Text>
@@ -57,23 +101,35 @@ const AppointmentCard = ({ appointment, onEdit, onDelete }) => {
 };
 
 export default function TelaInicial({ navigation, appointments, setAppointments }) {
-  const { theme } = useContext(ThemeContext);
+  const { theme, isDarkMode } = useContext(ThemeContext);
   const [selectedDate, setSelectedDate] = useState(null);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
+    StatusBar.setBarStyle(isDarkMode ? 'light-content' : 'dark-content');
+    StatusBar.setBackgroundColor(theme.background);
+  }, [isDarkMode]);
+
+  useEffect(() => {
     const loadAppointments = async () => {
       const storedAppointments = await getAppointments();
-      setAppointments(storedAppointments);
-      setFilteredAppointments(storedAppointments);
+      const sortedAppointments = storedAppointments.sort((a, b) => {
+        const dateTimeA = parseISO(`${a.date}T${a.time}`);
+        const dateTimeB = parseISO(`${b.date}T${b.time}`);
+        return dateTimeA - dateTimeB;
+      });
+      setAppointments(sortedAppointments);
+      setFilteredAppointments(sortedAppointments);
     };
     loadAppointments();
   }, []);
 
   useEffect(() => {
     if (selectedDate) {
-      const filtered = appointments.filter((app) => isSameDay(new Date(app.date), selectedDate));
+      const filtered = appointments.filter((app) =>
+        isSameDay(new Date(app.date), selectedDate)
+      );
       setFilteredAppointments(filtered);
     } else {
       setFilteredAppointments(appointments);
@@ -91,22 +147,28 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
 
   const handleDelete = (appointment) => {
     Alert.alert(
-      "Confirmar Exclusão",
+      'Confirmar Exclusão',
       `Tem certeza que deseja excluir o agendamento de ${appointment.name}?`,
       [
         {
-          text: "Cancelar",
-          style: "cancel",
+          text: 'Cancelar',
+          style: 'cancel',
         },
         {
-          text: "Excluir",
+          text: 'Excluir',
           onPress: async () => {
             await deleteAppointment(appointment.id);
             const updatedAppointments = await getAppointments();
+
+            Toast.show({
+              type: 'success',
+              text1: `Agendamento de ${appointment.name} foi excluído!`,
+              visibilityTime: 2000,
+            });
+
             setAppointments(updatedAppointments);
-            Alert.alert("Sucesso", `Agendamento excluído: ${appointment.name}`);
           },
-          style: "destructive",
+          style: 'destructive',
         },
       ]
     );
@@ -124,10 +186,13 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Text style={[styles.title, { color: theme.text }]}>Sua agenda</Text>
       <Text style={[styles.subtitle, { color: theme.text }]}>
-        Aqui você pode ver todos os clientes e serviços agendados para hoje.
+        Aqui você pode ver todos os clientes e serviços agendados.
       </Text>
 
-      <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[styles.dateFilterButton, { backgroundColor: theme.card }]}>
+      <TouchableOpacity
+        onPress={() => setShowDatePicker(true)}
+        style={[styles.dateFilterButton, { backgroundColor: theme.card }]}
+      >
         <Image
           source={require('../assets/IconesTelaInicial/Calendario.png')}
           style={styles.calendarIcon}
@@ -145,12 +210,18 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
           mode="date"
           display="default"
           onChange={handleDateChange}
+          locale="pt-BR"
         />
       )}
 
       {selectedDate && (
-        <TouchableOpacity onPress={clearFilter} style={[styles.clearFilterButton, { backgroundColor: '#8A2BE2' }]}>
-          <Text style={[styles.clearFilterText, { color: '#FFFFFF' }]}>Mostrar Todos</Text>
+        <TouchableOpacity
+          onPress={clearFilter}
+          style={[styles.clearFilterButton, { backgroundColor: '#8A2BE2' }]}
+        >
+          <Text style={[styles.clearFilterText, { color: '#FFFFFF' }]}>
+            Mostrar Todos
+          </Text>
         </TouchableOpacity>
       )}
 
@@ -171,11 +242,22 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
         )}
       />
 
+      {/* Button to add a new appointment */}
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: '#8A2BE2' }]}
+        style={[styles.button, { backgroundColor: '#8A2BE2', marginTop: 10 }]}
         onPress={() => navigation.navigate('AGENDAMENTO')}
       >
-        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Novo Agendamento</Text>
+        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+          Novo Agendamento
+        </Text>
+      </TouchableOpacity>
+
+      {/* Button to navigate to the Manage screen */}
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: '#8A2BE2', marginTop: 10 }]}
+        onPress={() => navigation.navigate('GERENCIAR')}
+      >
+        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Gerenciar</Text>
       </TouchableOpacity>
     </View>
   );
@@ -185,6 +267,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    backgroundColor: '#FFFFFF',
   },
   title: {
     fontSize: 24,
@@ -194,62 +277,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     marginBottom: 20,
-  },
-  card: {
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 10,
-    position: 'relative',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardContent: {
-    marginTop: 10,
-  },
-  periodText: {
-    fontSize: 14,
-  },
-  cardTime: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 5,
-  },
-  cardDescription: {
-    fontSize: 14,
-    marginTop: 5,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
-  button: {
-    padding: 15,
-    alignItems: 'center',
-    borderRadius: 8,
-    marginTop: 20,
-    backgroundColor: '#8A2BE2',
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  filterText: {
-    fontSize: 18,
-    marginLeft: 10,
-  },
-  emptyText: {
-    textAlign: 'center',
-    fontSize: 16,
-    marginTop: 20,
   },
   dateFilterButton: {
     flexDirection: 'row',
@@ -263,6 +290,10 @@ const styles = StyleSheet.create({
     height: 24,
     resizeMode: 'contain',
   },
+  filterText: {
+    fontSize: 18,
+    marginLeft: 10,
+  },
   clearFilterButton: {
     padding: 10,
     borderRadius: 8,
@@ -272,6 +303,69 @@ const styles = StyleSheet.create({
   },
   clearFilterText: {
     fontSize: 16,
+    color: '#FFFFFF',
+  },
+  card: {
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+    position: 'relative',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  periodText: {
+    fontSize: 14,
+  },
+  cardTime: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cardContent: {
+    marginTop: 10,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 5,
+  },
+  cardDescription: {
+    fontSize: 14,
+    marginTop: 5,
+  },
+  colaboradorText: {
+    fontSize: 14,
+    marginTop: 5,
+    fontStyle: 'italic',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  editText: {
+    fontSize: 16,
+  },
+  removeText: {
+    fontSize: 16,
+    color: 'red',
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontSize: 16,
+    marginTop: 20,
+  },
+  button: {
+    padding: 15,
+    alignItems: 'center',
+    borderRadius: 8,
+    backgroundColor: '#8A2BE2',
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
     color: '#FFFFFF',
   },
 });
