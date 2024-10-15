@@ -1,4 +1,3 @@
-// TelaAtendimentosConcluidos.js
 import React, { useContext, useEffect, useState } from 'react';
 import {
   View,
@@ -14,10 +13,11 @@ import { ptBR } from 'date-fns/locale';
 import {
   getConcludedAppointments,
   deleteAtendimento,
-  updateAtendimento, // Função que precisamos criar
 } from '../database';
 import { ThemeContext } from './tema';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 export default function TelaAtendimentosConcluidos({ navigation }) {
   const { theme, isDarkMode } = useContext(ThemeContext);
@@ -26,15 +26,22 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
   const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  useEffect(() => {
-    loadAppointments();
-  }, []);
-
   const loadAppointments = async () => {
     const storedAppointments = await getConcludedAppointments();
     setAppointments(storedAppointments);
     setFilteredAppointments(storedAppointments);
   };
+
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Carrega os atendimentos sempre que a tela ganhar foco
+      loadAppointments();
+    }, [])
+  );
 
   useEffect(() => {
     if (selectedDate) {
@@ -72,9 +79,13 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
         {
           text: 'Excluir',
           onPress: async () => {
-            await deleteAtendimento(atendimentoId);
-            loadAppointments(); // Atualiza a lista após a exclusão
-            Alert.alert('Sucesso', 'Atendimento excluído com sucesso.');
+            try {
+              await deleteAtendimento(atendimentoId);
+              loadAppointments(); // Atualiza a lista após a exclusão
+              Alert.alert('Sucesso', 'Atendimento excluído com sucesso.');
+            } catch (error) {
+              Alert.alert('Erro', 'Não foi possível excluir o atendimento.');
+            }
           },
           style: 'destructive',
         },
@@ -83,7 +94,7 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
   };
 
   const handleEdit = (appointment) => {
-    navigation.navigate('EDITAR_ATENDIMENTO_CONCLUIDO', { appointment, refreshAppointments: loadAppointments });
+    navigation.navigate('EDITAR_ATENDIMENTO_CONCLUIDO', { appointment });
   };
 
   return (
@@ -112,6 +123,7 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
           display="default"
           onChange={handleDateChange}
           locale="pt-BR"
+          themeVariant={isDarkMode ? 'dark' : 'light'}
         />
       )}
 
@@ -128,7 +140,7 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
 
       <FlatList
         data={filteredAppointments}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.atendimentoId.toString()}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={[styles.card, { backgroundColor: theme.card }]}

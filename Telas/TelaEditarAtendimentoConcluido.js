@@ -9,23 +9,15 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
-import { Checkbox } from 'react-native-paper'; // Utilizando react-native-paper para o checkbox
+import { Checkbox } from 'react-native-paper';
 import { ThemeContext } from './tema';
 import {
   getColaboradores,
   getServices,
-  getColaboradoresForService,
-  addAtendimento,
-  updateAppointment, // Importado para atualizar o agendamento
-  getAppointments, // Importado para atualizar a lista de agendamentos
+  updateAtendimento,
 } from '../database';
 
-export default function TelaAtendimento({
-  route,
-  navigation,
-  appointments,
-  setAppointments,
-}) {
+export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
   const { theme, isDarkMode } = useContext(ThemeContext);
   const { appointment } = route.params;
 
@@ -81,35 +73,23 @@ export default function TelaAtendimento({
     }
   };
 
-  const handleFinalizarAtendimento = async () => {
+  const handleSaveChanges = async () => {
     if (selectedServices.length === 0) {
       Alert.alert('Erro', 'Selecione pelo menos um serviço.');
       return;
     }
 
     try {
-      // Atualizar o agendamento original com as novas informações
-      await updateAppointment(appointment.id, {
-        ...appointment,
-        serviceDescription: selectedServices.join(', '),
-        colaboradorId: selectedColaboradores.length > 0 ? selectedColaboradores[0] : null,
-      });
-
-      // Adicionar o atendimento concluído
-      await addAtendimento(
-        appointment.id,
+      await updateAtendimento(
+        appointment.atendimentoId,
         selectedServices.join(', '),
         selectedColaboradores.length > 0 ? selectedColaboradores[0] : null
       );
 
-      // Atualiza a lista de agendamentos na página inicial
-      const updatedAppointments = await getAppointments();
-      setAppointments(updatedAppointments);
-
-      Alert.alert('Sucesso', 'Serviço concluído.');
+      Alert.alert('Sucesso', 'Atendimento atualizado com sucesso.');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Erro ao finalizar atendimento.');
+      Alert.alert('Erro ao atualizar atendimento.');
     }
   };
 
@@ -207,9 +187,9 @@ export default function TelaAtendimento({
 
       <TouchableOpacity
         style={[styles.button, { backgroundColor: '#8A2BE2', marginTop: 20 }]}
-        onPress={handleFinalizarAtendimento}
+        onPress={handleSaveChanges}
       >
-        <Text style={styles.buttonText}>Finalizar Atendimento</Text>
+        <Text style={styles.buttonText}>Salvar Alterações</Text>
       </TouchableOpacity>
 
       {/* Modal para serviços */}
@@ -325,5 +305,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 5,
     marginBottom: 10,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
 });
