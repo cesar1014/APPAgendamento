@@ -1,3 +1,4 @@
+// TelaColaboradores.js
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
@@ -19,31 +20,32 @@ import {
   getServicesForColaborador,
   updateColaboradorName,
 } from '../database';
-import { Checkbox } from 'react-native-paper'; // Import Checkbox from react-native-paper
+import { Checkbox } from 'react-native-paper';
 
-export default function TelaColaboradores() {
+export default function TelaColaboradores({ navigation }) {
   const { theme, isDarkMode } = useContext(ThemeContext);
   const [colaboradores, setColaboradores] = useState([]);
-  const [newColaborador, setNewColaborador] = useState('');
   const [services, setServices] = useState([]);
+  const [newColaborador, setNewColaborador] = useState('');
   const [selectedServices, setSelectedServices] = useState([]);
   const [editingColaborador, setEditingColaborador] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
-    const loadColaboradores = async () => {
-      const storedColaboradores = await getColaboradores();
-      setColaboradores(storedColaboradores);
-    };
-
-    const loadServices = async () => {
-      const storedServices = await getServices();
-      setServices(storedServices);
-    };
-
-    loadColaboradores();
-    loadServices();
+    loadColaboradoresAndServices();
   }, []);
+
+  const loadColaboradoresAndServices = async () => {
+    try {
+      const loadedColaboradores = await getColaboradores();
+      setColaboradores(loadedColaboradores);
+
+      const loadedServices = await getServices();
+      setServices(loadedServices);
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível carregar colaboradores ou serviços.');
+    }
+  };
 
   const handleAddColaborador = async () => {
     if (!newColaborador.trim()) {
@@ -55,11 +57,29 @@ export default function TelaColaboradores() {
       await addColaborador(newColaborador, selectedServices);
       setNewColaborador('');
       setSelectedServices([]);
-      const updatedColaboradores = await getColaboradores();
-      setColaboradores(updatedColaboradores);
+      loadColaboradoresAndServices();
       Alert.alert('Sucesso', 'Colaborador adicionado com sucesso.');
     } catch (error) {
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', 'Não foi possível adicionar o colaborador.');
+    }
+  };
+
+  const handleUpdateColaborador = async () => {
+    if (!editingColaborador || !newColaborador.trim()) {
+      Alert.alert('Erro', 'O nome do colaborador não pode estar vazio.');
+      return;
+    }
+
+    try {
+      await updateColaboradorName(editingColaborador.id, newColaborador);
+      await setColaboradorServices(editingColaborador.id, selectedServices);
+      setNewColaborador('');
+      setSelectedServices([]);
+      setEditingColaborador(null);
+      loadColaboradoresAndServices();
+      Alert.alert('Sucesso', 'Colaborador atualizado com sucesso.');
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível atualizar o colaborador.');
     }
   };
 
@@ -77,37 +97,16 @@ export default function TelaColaboradores() {
           onPress: async () => {
             try {
               await deleteColaborador(id);
-              const updatedColaboradores = await getColaboradores();
-              setColaboradores(updatedColaboradores);
+              loadColaboradoresAndServices();
               Alert.alert('Sucesso', 'Colaborador excluído com sucesso.');
             } catch (error) {
-              Alert.alert('Erro', error.message);
+              Alert.alert('Erro', 'Não foi possível excluir o colaborador.');
             }
           },
           style: 'destructive',
         },
       ]
     );
-  };
-
-  const handleUpdateColaborador = async () => {
-    if (!editingColaborador || !newColaborador.trim()) {
-      Alert.alert('Erro', 'O nome do colaborador não pode estar vazio.');
-      return;
-    }
-
-    try {
-      await updateColaboradorName(editingColaborador.id, newColaborador);
-      await setColaboradorServices(editingColaborador.id, selectedServices);
-      setNewColaborador('');
-      setSelectedServices([]);
-      setEditingColaborador(null);
-      const updatedColaboradores = await getColaboradores();
-      setColaboradores(updatedColaboradores);
-      Alert.alert('Sucesso', 'Colaborador atualizado com sucesso.');
-    } catch (error) {
-      Alert.alert('Erro', error.message);
-    }
   };
 
   const startEditing = async (colaborador) => {
@@ -154,12 +153,12 @@ export default function TelaColaboradores() {
           !isDarkMode && { borderWidth: 1, borderColor: '#ccc' },
         ]}
         placeholder="Nome do Colaborador"
-        placeholderTextColor={theme.text === '#000000' ? '#000000' : '#c7c7cc'}
+        placeholderTextColor={isDarkMode ? '#c7c7cc' : '#7c7c7c'}
         value={newColaborador}
         onChangeText={setNewColaborador}
       />
 
-      {/* Button to open the service selection modal */}
+      {/* Botão para abrir o modal de seleção de serviços */}
       <TouchableOpacity
         style={[styles.selectButton, { backgroundColor: theme.card }]}
         onPress={() => setModalVisible(true)}
@@ -169,7 +168,7 @@ export default function TelaColaboradores() {
         </Text>
       </TouchableOpacity>
 
-      {/* Display selected services */}
+      {/* Exibir serviços selecionados */}
       {selectedServices.length > 0 && (
         <View style={styles.selectedServicesContainer}>
           <Text style={{ color: theme.text }}>Serviços selecionados:</Text>
@@ -183,7 +182,7 @@ export default function TelaColaboradores() {
         </View>
       )}
 
-      {/* Modal for service selection */}
+      {/* Modal para seleção de serviços */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -232,7 +231,7 @@ export default function TelaColaboradores() {
         </TouchableOpacity>
       )}
 
-      {/* List of Collaborators */}
+      {/* Lista de Colaboradores */}
       <FlatList
         data={colaboradores}
         keyExtractor={(item) => item.id.toString()}
@@ -262,13 +261,15 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    marginBottom: 20,
+    marginBottom: 15,
     fontWeight: 'bold',
   },
   input: {
     padding: 10,
     borderRadius: 8,
-    marginBottom: 15,
+    marginBottom: 10,
+    height: 50,
+    fontSize: 16,
   },
   selectButton: {
     padding: 10,
@@ -283,7 +284,6 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 20,
   },
   buttonText: {
     fontWeight: 'bold',
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   },
   modalBackground: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Fundo semi-transparente
     justifyContent: 'center',
     alignItems: 'center',
   },

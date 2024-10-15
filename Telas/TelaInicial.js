@@ -7,14 +7,13 @@ import {
   StyleSheet,
   Alert,
   Image,
-  StatusBar,
 } from 'react-native';
 import { format, isSameDay, parseISO, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getAppointments, deleteAppointment } from '../database';
 import { ThemeContext } from './tema';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import Toast from 'react-native-toast-message';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const getPeriodIcon = (time) => {
   const [hour] = time.split(':').map(Number);
@@ -28,7 +27,12 @@ const getPeriodIcon = (time) => {
   return { icon: '', period: '' };
 };
 
-const AppointmentCard = ({ appointment, onEdit, onDelete }) => {
+const AppointmentCard = ({
+  appointment,
+  onEdit,
+  onDelete,
+  onStartAtendimento,
+}) => {
   const { theme, isDarkMode } = useContext(ThemeContext);
   const { icon, period } = getPeriodIcon(appointment.time);
   const [showActions, setShowActions] = useState(false);
@@ -65,33 +69,30 @@ const AppointmentCard = ({ appointment, onEdit, onDelete }) => {
             {appointment.name} ({appointment.phone})
           </Text>
           <Text
-            style={[
-              styles.cardDescription,
-              { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' },
-            ]}
+            style={[styles.cardDescription, { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' }]}
           >
             {appointment.serviceDescription}
           </Text>
           {appointment.colaboradorNome && (
             <Text
-              style={[
-                styles.colaboradorText,
-                { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' },
-              ]}
+              style={[styles.colaboradorText, { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' }]}
             >
               Colaborador: {appointment.colaboradorNome}
             </Text>
           )}
           {showActions && (
             <View style={styles.actionButtons}>
-              <TouchableOpacity onPress={() => onEdit(appointment)}>
-                <Text style={[styles.editText, { color: theme.buttonBackground }]}>
-                  Alterar
-                </Text>
+              <TouchableOpacity onPress={() => onStartAtendimento(appointment)}>
+                <Text style={styles.startText}>Iniciar Atendimento</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => onDelete(appointment)}>
-                <Text style={[styles.removeText, { color: 'red' }]}>Excluir</Text>
-              </TouchableOpacity>
+              <View style={styles.rightActionButtons}>
+                <TouchableOpacity onPress={() => onEdit(appointment)}>
+                  <Text style={styles.editText}>Alterar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onDelete(appointment)}>
+                  <Text style={styles.removeText}>Excluir</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </View>
@@ -105,11 +106,6 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
   const [selectedDate, setSelectedDate] = useState(null);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
-
-  useEffect(() => {
-    StatusBar.setBarStyle(isDarkMode ? 'light-content' : 'dark-content');
-    StatusBar.setBackgroundColor(theme.background);
-  }, [isDarkMode]);
 
   useEffect(() => {
     const loadAppointments = async () => {
@@ -178,6 +174,10 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
     navigation.navigate('AGENDAMENTO', { appointment });
   };
 
+  const handleStartAtendimento = (appointment) => {
+    navigation.navigate('ATENDIMENTO', { appointment });
+  };
+
   const clearFilter = () => {
     setSelectedDate(null);
   };
@@ -233,6 +233,7 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
             appointment={item}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onStartAtendimento={handleStartAtendimento}
           />
         )}
         ListEmptyComponent={() => (
@@ -242,7 +243,6 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
         )}
       />
 
-      {/* Button to add a new appointment */}
       <TouchableOpacity
         style={[styles.button, { backgroundColor: '#8A2BE2', marginTop: 10 }]}
         onPress={() => navigation.navigate('AGENDAMENTO')}
@@ -252,7 +252,6 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
         </Text>
       </TouchableOpacity>
 
-      {/* Button to navigate to the Manage screen */}
       <TouchableOpacity
         style={[styles.button, { backgroundColor: '#8A2BE2', marginTop: 10 }]}
         onPress={() => navigation.navigate('GERENCIAR')}
@@ -345,8 +344,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 10,
   },
+  rightActionButtons: {
+    flexDirection: 'row',
+  },
+  startText: {
+    fontSize: 16,
+    color: '#00BFFF',
+  },
   editText: {
     fontSize: 16,
+    marginRight: 20,
+    color: '#8A2BE2'
   },
   removeText: {
     fontSize: 16,

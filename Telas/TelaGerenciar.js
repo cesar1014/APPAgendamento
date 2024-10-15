@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { ThemeContext } from './tema';
 
 export default function TelaGerenciar({ navigation }) {
@@ -24,6 +24,15 @@ export default function TelaGerenciar({ navigation }) {
           Gerenciar Colaboradores
         </Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: '#8A2BE2', marginTop: 20 }]}
+        onPress={() => navigation.navigate('ATENDIMENTOS_CONCLUIDOS')}
+      >
+        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+          Atendimentos Concluídos
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -31,8 +40,8 @@ export default function TelaGerenciar({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center', // Centraliza verticalmente
-    alignItems: 'center', // Centraliza horizontalmente
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   button: {
