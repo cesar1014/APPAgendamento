@@ -11,14 +11,16 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import TelaInicial from './Telas/TelaInicial';
 import TelaAgendamentos from './Telas/TelaAgendamento';
 import TelaServicos from './Telas/TelaServicos';
 import TelaColaboradores from './Telas/TelaColaboradores';
 import TelaGerenciar from './Telas/TelaGerenciar';
-import TelaAtendimento from './Telas/TelaAtendimentos'; // Importa a tela de atendimento
-import TelaAtendimentosConcluidos from './Telas/TelaAtendimentosConcluidos'; // Importa a nova tela
+import TelaAtendimento from './Telas/TelaAtendimentos';
+import TelaAtendimentosConcluidos from './Telas/TelaAtendimentosConcluidos';
+import TelaEditarAtendimentoConcluido from './Telas/TelaEditarAtendimentoConcluido';
 
 import {
   createTablesIfNeeded,
@@ -113,6 +115,13 @@ function AppNavigator({ appointments, setAppointments }) {
           )}
         </Stack.Screen>
         <Stack.Screen
+          name="EDITAR_ATENDIMENTO_CONCLUIDO"
+          component={TelaEditarAtendimentoConcluido}
+          options={{
+            headerTitle: 'Editar Atendimento Concluído',
+          }}
+        />
+        <Stack.Screen
           name="AGENDAMENTO"
           options={{
             headerTitle: () => (
@@ -137,19 +146,19 @@ function AppNavigator({ appointments, setAppointments }) {
           )}
         </Stack.Screen>
         <Stack.Screen
-  name="ATENDIMENTO"
-  options={{
-    headerTitle: 'Atendimento',
-  }}
->
-  {(props) => (
-    <TelaAtendimento
-      {...props}
-      appointments={appointments}
-      setAppointments={setAppointments}
-    />
-  )}
-</Stack.Screen>
+          name="ATENDIMENTO"
+          options={{
+            headerTitle: 'Atendimento',
+          }}
+        >
+          {(props) => (
+            <TelaAtendimento
+              {...props}
+              appointments={appointments}
+              setAppointments={setAppointments}
+            />
+          )}
+        </Stack.Screen>
         <Stack.Screen
           name="GERENCIAR"
           component={TelaGerenciar}
@@ -172,13 +181,12 @@ function AppNavigator({ appointments, setAppointments }) {
           }}
         />
         <Stack.Screen
-  name="ATENDIMENTOS_CONCLUIDOS"
-  component={TelaAtendimentosConcluidos}
-  options={{
-    headerTitle: 'Atendimentos Concluídos',
-  }}
-/>
-        
+          name="ATENDIMENTOS_CONCLUIDOS"
+          component={TelaAtendimentosConcluidos}
+          options={{
+            headerTitle: 'Atendimentos Concluídos',
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -196,9 +204,7 @@ export default function App() {
 
         // Inicializa os serviços padrão
         await initializeDefaultServices();
-         // Reseta favoritos dos serviços
 
-        // Agora que o banco de dados está pronto, podemos carregar os agendamentos
         const storedAppointments = await getAppointments();
         setAppointments(storedAppointments);
 
@@ -270,7 +276,6 @@ const styles = StyleSheet.create({
     padding: 2,
     justifyContent: 'center',
   },
-  
   toggleBall: {
     width: 16,
     height: 16,

@@ -6,6 +6,8 @@ const openDatabase = async () => {
   return db;
 };
 
+
+
 // Função para criar as tabelas, se necessário
 export const createTablesIfNeeded = async () => {
   const db = await openDatabase();
@@ -233,14 +235,15 @@ export const getAppointments = async () => {
 };
 
 // Função para obter agendamentos concluídos
+// Função para obter agendamentos concluídos
 export const getConcludedAppointments = async () => {
   const db = await openDatabase();
   try {
     const appointments = await db.getAllAsync(`
-      SELECT a.*, c.nome as colaboradorNome, at.serviceDescription, at.colaboradorId
+      SELECT a.*, at.id as atendimentoId, at.serviceDescription, at.colaboradorId, c.nome as colaboradorNome
       FROM appointments a
-      LEFT JOIN colaboradores c ON a.colaboradorId = c.id
       INNER JOIN atendimentos at ON at.appointmentId = a.id AND at.atendimentoConcluido = 1
+      LEFT JOIN colaboradores c ON at.colaboradorId = c.id
       ORDER BY date(a.date) ASC, a.time ASC;
     `);
     return appointments;
@@ -248,6 +251,13 @@ export const getConcludedAppointments = async () => {
     console.error('Erro ao obter agendamentos concluídos:', error);
     throw error;
   }
+};
+export const updateAtendimento = async (id, serviceDescription, colaboradorId = null) => {
+  const db = await openDatabase();
+  await db.runAsync(
+    'UPDATE atendimentos SET serviceDescription = ?, colaboradorId = ? WHERE id = ?;',
+    [serviceDescription, colaboradorId, id]
+  );
 };
 
 // Função para deletar um agendamento
