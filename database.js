@@ -43,6 +43,16 @@ export const createTablesIfNeeded = async () => {
         FOREIGN KEY (serviceId) REFERENCES services(id),
         FOREIGN KEY (colaboradorId) REFERENCES colaboradores(id)
       );
+
+      CREATE TABLE IF NOT EXISTS atendimentos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        appointmentId INTEGER NOT NULL,
+        serviceDescription TEXT NOT NULL,
+        colaboradorId INTEGER,
+        atendimentoConcluido INTEGER DEFAULT 0,
+        FOREIGN KEY (appointmentId) REFERENCES appointments(id),
+        FOREIGN KEY (colaboradorId) REFERENCES colaboradores(id)
+      );
     `);
 
     console.log('Tabelas criadas/verificadas com sucesso.');
@@ -56,7 +66,13 @@ export const createTablesIfNeeded = async () => {
 export const checkTablesExist = async () => {
   const db = await openDatabase();
   try {
-    const tables = ['appointments', 'services', 'colaboradores', 'service_colaboradores'];
+    const tables = [
+      'appointments',
+      'services',
+      'colaboradores',
+      'service_colaboradores',
+      'atendimentos',
+    ];
     for (const table of tables) {
       const result = await db.getFirstAsync(
         `SELECT name FROM sqlite_master WHERE type='table' AND name=?;`,
@@ -107,19 +123,46 @@ export const initializeDefaultServices = async () => {
   }
 };
 
-// Função para redefinir favoritos dos serviços
-export const resetServiceFavorites = async () => {
+// Adicionar atendimento
+export const addAtendimento = async (
+  appointmentId,
+  serviceDescription,
+  colaboradorId = null
+) => {
   const db = await openDatabase();
-  try {
-    await db.runAsync('UPDATE services SET isFavorite = 0;');
-    console.log('Favoritos dos serviços redefinidos para 0.');
-  } catch (error) {
-    console.error('Erro ao redefinir favoritos dos serviços:', error);
-    throw error;
-  }
+  await db.runAsync(
+    'INSERT INTO atendimentos (appointmentId, serviceDescription, colaboradorId, atendimentoConcluido) VALUES (?, ?, ?, 1);',
+    [appointmentId, serviceDescription, colaboradorId]
+  );
 };
 
-// Resto das funções...
+// Obter atendimentos em andamento
+export const getAtendimentos = async () => {
+  const db = await openDatabase();
+  return await db.getAllAsync(
+    'SELECT * FROM atendimentos WHERE atendimentoConcluido = 0;'
+  );
+};
+
+// Finalizar atendimento
+export const finalizarAtendimento = async (id) => {
+  const db = await openDatabase();
+  await db.runAsync('UPDATE atendimentos SET atendimentoConcluido = 1 WHERE id = ?;', [id]);
+};
+
+// Obter atendimentos concluídos
+export const getAtendimentosConcluidos = async () => {
+  const db = await openDatabase();
+  return await db.getAllAsync(
+    'SELECT * FROM atendimentos WHERE atendimentoConcluido = 1;'
+  );
+};
+
+// Deletar atendimento
+export const deleteAtendimento = async (id) => {
+  const db = await openDatabase();
+  await db.runAsync('DELETE FROM atendimentos WHERE id = ?;', [id]);
+};
 
 // Função para adicionar um agendamento
 export const addAppointment = async (appointment) => {
@@ -169,7 +212,7 @@ export const updateAppointment = async (id, appointment) => {
   }
 };
 
-// Função para obter todos os agendamentos
+// Função para obter todos os agendamentos que NÃO estão concluídos
 export const getAppointments = async () => {
   const db = await openDatabase();
   try {
@@ -177,11 +220,32 @@ export const getAppointments = async () => {
       SELECT a.*, c.nome as colaboradorNome
       FROM appointments a
       LEFT JOIN colaboradores c ON a.colaboradorId = c.id
+      WHERE NOT EXISTS (
+        SELECT 1 FROM atendimentos at WHERE at.appointmentId = a.id AND at.atendimentoConcluido = 1
+      )
       ORDER BY date(a.date) ASC, a.time ASC;
     `);
     return appointments;
   } catch (error) {
     console.error('Erro ao obter agendamentos:', error);
+    throw error;
+  }
+};
+
+// Função para obter agendamentos concluídos
+export const getConcludedAppointments = async () => {
+  const db = await openDatabase();
+  try {
+    const appointments = await db.getAllAsync(`
+      SELECT a.*, c.nome as colaboradorNome, at.serviceDescription, at.colaboradorId
+      FROM appointments a
+      LEFT JOIN colaboradores c ON a.colaboradorId = c.id
+      INNER JOIN atendimentos at ON at.appointmentId = a.id AND at.atendimentoConcluido = 1
+      ORDER BY date(a.date) ASC, a.time ASC;
+    `);
+    return appointments;
+  } catch (error) {
+    console.error('Erro ao obter agendamentos concluídos:', error);
     throw error;
   }
 };
@@ -415,3 +479,4 @@ export const getAppointmentsLinkedToService = async (serviceDescription) => {
     throw error;
   }
 };
+
