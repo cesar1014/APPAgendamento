@@ -118,7 +118,7 @@ function AppNavigator({ appointments, setAppointments }) {
           name="EDITAR_ATENDIMENTO_CONCLUIDO"
           component={TelaEditarAtendimentoConcluido}
           options={{
-            headerTitle: 'Editar Atendimento Concluído',
+            headerTitle: 'Editar Atendimento',
           }}
         />
         <Stack.Screen
