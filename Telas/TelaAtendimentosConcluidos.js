@@ -163,8 +163,9 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
               {item.serviceDescription}
             </Text>
             <Text style={[styles.cardDate, { color: theme.text }]}>
-              {format(parseISO(item.date), 'dd/MM/yyyy', { locale: ptBR })} às {item.time}
-            </Text>
+  {format(new Date(item.date), 'dd/MM/yyyy', { locale: ptBR })} às {item.time}
+</Text>
+
             {item.colaboradorNome && (
               <Text style={[styles.colaboradorText, { color: theme.text }]}>
                 Colaborador: {item.colaboradorNome}
