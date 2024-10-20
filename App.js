@@ -1,3 +1,4 @@
+// App.js
 import React, { useContext, useEffect, useState, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -29,6 +30,10 @@ import {
   initializeDefaultServices,
 } from './database';
 import { ThemeProvider, ThemeContext } from './Telas/tema';
+
+// Importação do Toast
+import Toast from 'react-native-toast-message';
+import CustomToast from './CustomToast'; // Ajuste o caminho conforme necessário
 
 // Desativa logs no ambiente de produção
 if (!__DEV__) {
@@ -126,7 +131,10 @@ function AppNavigator({ appointments, setAppointments }) {
           options={{
             headerTitle: () => (
               <Text
-                style={[styles.logoText, { color: '#9282FA', fontWeight: 'bold' }]}
+                style={[
+                  styles.logoText,
+                  { color: '#9282FA', fontWeight: 'bold' },
+                ]}
               >
                 AGENDAMENTO
               </Text>
@@ -234,6 +242,14 @@ export default function App() {
       <AppNavigator
         appointments={appointments}
         setAppointments={handleSetAppointments}
+      />
+      {/* Configuração do Toast com o CustomToast */}
+      <Toast
+        config={{
+          success: (props) => <CustomToast {...props} />,
+          error: (props) => <CustomToast {...props} />,
+          info: (props) => <CustomToast {...props} />,
+        }}
       />
     </ThemeProvider>
   );

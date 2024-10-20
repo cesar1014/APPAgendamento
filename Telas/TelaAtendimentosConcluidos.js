@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,15 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import { format, isSameDay, parseISO } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import {
-  getConcludedAppointments,
-  deleteAtendimento,
-} from '../database';
+import { getConcludedAppointments, deleteAtendimento } from '../database';
 import { ThemeContext } from './tema';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback } from 'react';
+
+// Import Toast
+import Toast from 'react-native-toast-message';
 
 export default function TelaAtendimentosConcluidos({ navigation }) {
   const { theme, isDarkMode } = useContext(ThemeContext);
@@ -27,9 +26,18 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const loadAppointments = async () => {
-    const storedAppointments = await getConcludedAppointments();
-    setAppointments(storedAppointments);
-    setFilteredAppointments(storedAppointments);
+    try {
+      const storedAppointments = await getConcludedAppointments();
+      setAppointments(storedAppointments);
+      setFilteredAppointments(storedAppointments);
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Não foi possível carregar os atendimentos concluídos.',
+        visibilityTime: 1500,
+      });
+    }
   };
 
   useEffect(() => {
@@ -38,7 +46,7 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      // Carrega os atendimentos sempre que a tela ganhar foco
+      // Load appointments when screen gains focus
       loadAppointments();
     }, [])
   );
@@ -81,10 +89,20 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
           onPress: async () => {
             try {
               await deleteAtendimento(atendimentoId);
-              loadAppointments(); // Atualiza a lista após a exclusão
-              Alert.alert('Sucesso', 'Atendimento excluído com sucesso.');
+              loadAppointments(); // Update the list after deletion
+              Toast.show({
+                type: 'success',
+                text1: 'Sucesso',
+                text2: 'Atendimento excluído com sucesso.',
+                visibilityTime: 1500,
+              });
             } catch (error) {
-              Alert.alert('Erro', 'Não foi possível excluir o atendimento.');
+              Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Não foi possível excluir o atendimento.',
+                visibilityTime: 1500,
+              });
             }
           },
           style: 'destructive',
@@ -99,7 +117,9 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.title, { color: theme.text }]}>Atendimentos Concluídos</Text>
+      <Text style={[styles.title, { color: theme.text }]}>
+        Atendimentos Concluídos
+      </Text>
 
       <TouchableOpacity
         onPress={() => setShowDatePicker(true)}
@@ -152,10 +172,16 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
               </Text>
               <View style={styles.cardActions}>
                 <TouchableOpacity onPress={() => handleEdit(item)}>
-                  <Text style={[styles.editText, { color: '#007AFF' }]}>Editar</Text>
+                  <Text style={[styles.editText, { color: '#007AFF' }]}>
+                    Editar
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(item.atendimentoId)}>
-                  <Text style={[styles.deleteText, { color: 'red' }]}>Excluir</Text>
+                <TouchableOpacity
+                  onPress={() => handleDelete(item.atendimentoId)}
+                >
+                  <Text style={[styles.deleteText, { color: 'red' }]}>
+                    Excluir
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -163,8 +189,9 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
               {item.serviceDescription}
             </Text>
             <Text style={[styles.cardDate, { color: theme.text }]}>
-  {format(new Date(item.date), 'dd/MM/yyyy', { locale: ptBR })} às {item.time}
-</Text>
+              {format(new Date(item.date), 'dd/MM/yyyy', { locale: ptBR })} às{' '}
+              {item.time}
+            </Text>
 
             {item.colaboradorNome && (
               <Text style={[styles.colaboradorText, { color: theme.text }]}>

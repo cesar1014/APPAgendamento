@@ -1,3 +1,4 @@
+// TelaAgendamento.js
 import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
@@ -20,6 +21,7 @@ import {
 } from '../database';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RNPickerSelect from 'react-native-picker-select';
+import Toast from 'react-native-toast-message';
 
 export default function TelaAgendamento({
   route,
@@ -196,6 +198,16 @@ export default function TelaAgendamento({
                 const updatedAppointments = await getAppointments();
                 setAppointments(updatedAppointments);
                 navigation.goBack();
+
+                // Exibe o Toast de sucesso
+                Toast.show({
+                  type: 'success',
+                  text1: 'Sucesso',
+                  text2: appointment
+                    ? 'Agendamento atualizado com sucesso.'
+                    : 'Agendamento criado com sucesso.',
+                  visibilityTime: 1500,
+                });
               },
             },
           ]
@@ -203,17 +215,31 @@ export default function TelaAgendamento({
       } else {
         if (appointment) {
           await updateAppointment(appointment.id, appointmentData);
-          Alert.alert('Sucesso', 'Agendamento atualizado com sucesso.');
         } else {
           await addAppointment(appointmentData);
-          Alert.alert('Sucesso', 'Agendamento criado com sucesso.');
         }
         const updatedAppointments = await getAppointments();
         setAppointments(updatedAppointments);
         navigation.goBack();
+
+        // Exibe o Toast de sucesso
+        Toast.show({
+          type: 'success',
+          text1: 'Sucesso',
+          text2: appointment
+            ? 'Agendamento atualizado com sucesso.'
+            : 'Agendamento criado com sucesso.',
+          visibilityTime: 1500,
+        });
       }
     } catch (error) {
-      Alert.alert('Erro', error.message);
+      // Exibe o Toast de erro
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Ocorreu um erro ao salvar o agendamento.',
+        visibilityTime: 1500,
+      });
     }
   };
 

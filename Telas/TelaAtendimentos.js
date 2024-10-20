@@ -1,3 +1,4 @@
+// TelaAtendimentos.js
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
@@ -9,16 +10,17 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
-import { Checkbox } from 'react-native-paper'; // Utilizando react-native-paper para o checkbox
+import { Checkbox } from 'react-native-paper';
 import { ThemeContext } from './tema';
 import {
   getColaboradores,
   getServices,
   getColaboradoresForService,
   addAtendimento,
-  updateAppointment, // Importado para atualizar o agendamento
-  getAppointments, // Importado para atualizar a lista de agendamentos
+  updateAppointment,
+  getAppointments,
 } from '../database';
+import Toast from 'react-native-toast-message';
 
 export default function TelaAtendimento({
   route,
@@ -57,7 +59,12 @@ export default function TelaAtendimento({
         setSelectedColaboradores([appointment.colaboradorId]);
       }
     } catch (error) {
-      Alert.alert('Erro ao carregar serviços e colaboradores.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Não foi possível carregar serviços e colaboradores.',
+        visibilityTime: 2000,
+      });
     }
   };
 
@@ -83,7 +90,12 @@ export default function TelaAtendimento({
 
   const handleFinalizarAtendimento = async () => {
     if (selectedServices.length === 0) {
-      Alert.alert('Erro', 'Selecione pelo menos um serviço.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Selecione pelo menos um serviço.',
+        visibilityTime: 1500,
+      });
       return;
     }
 
@@ -92,7 +104,8 @@ export default function TelaAtendimento({
       await updateAppointment(appointment.id, {
         ...appointment,
         serviceDescription: selectedServices.join(', '),
-        colaboradorId: selectedColaboradores.length > 0 ? selectedColaboradores[0] : null,
+        colaboradorId:
+          selectedColaboradores.length > 0 ? selectedColaboradores[0] : null,
       });
 
       // Adicionar o atendimento concluído
@@ -106,10 +119,20 @@ export default function TelaAtendimento({
       const updatedAppointments = await getAppointments();
       setAppointments(updatedAppointments);
 
-      Alert.alert('Sucesso', 'Serviço concluído.');
+      Toast.show({
+        type: 'success',
+        text1: 'Sucesso',
+        text2: 'Atendimento concluído com sucesso.',
+        visibilityTime: 1500,
+      });
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Erro ao finalizar atendimento.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Não foi possível finalizar o atendimento.',
+        visibilityTime: 1500,
+      });
     }
   };
 

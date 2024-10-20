@@ -1,4 +1,3 @@
-// TelaColaboradores.js
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
@@ -22,6 +21,9 @@ import {
 } from '../database';
 import { Checkbox } from 'react-native-paper';
 
+// Import Toast
+import Toast from 'react-native-toast-message';
+
 export default function TelaColaboradores({ navigation }) {
   const { theme, isDarkMode } = useContext(ThemeContext);
   const [colaboradores, setColaboradores] = useState([]);
@@ -43,13 +45,23 @@ export default function TelaColaboradores({ navigation }) {
       const loadedServices = await getServices();
       setServices(loadedServices);
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível carregar colaboradores ou serviços.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Não foi possível carregar colaboradores ou serviços.',
+        visibilityTime: 1500,
+      });
     }
   };
 
   const handleAddColaborador = async () => {
     if (!newColaborador.trim()) {
-      Alert.alert('Erro', 'O nome do colaborador não pode estar vazio.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'O nome do colaborador não pode estar vazio.',
+        visibilityTime: 1500,
+      });
       return;
     }
 
@@ -58,15 +70,30 @@ export default function TelaColaboradores({ navigation }) {
       setNewColaborador('');
       setSelectedServices([]);
       loadColaboradoresAndServices();
-      Alert.alert('Sucesso', 'Colaborador adicionado com sucesso.');
+      Toast.show({
+        type: 'success',
+        text1: 'Sucesso',
+        text2: 'Colaborador adicionado com sucesso.',
+        visibilityTime: 1500,
+      });
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível adicionar o colaborador.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Não foi possível adicionar o colaborador.',
+        visibilityTime: 1500,
+      });
     }
   };
 
   const handleUpdateColaborador = async () => {
     if (!editingColaborador || !newColaborador.trim()) {
-      Alert.alert('Erro', 'O nome do colaborador não pode estar vazio.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'O nome do colaborador não pode estar vazio.',
+        visibilityTime: 1500,
+      });
       return;
     }
 
@@ -77,9 +104,19 @@ export default function TelaColaboradores({ navigation }) {
       setSelectedServices([]);
       setEditingColaborador(null);
       loadColaboradoresAndServices();
-      Alert.alert('Sucesso', 'Colaborador atualizado com sucesso.');
+      Toast.show({
+        type: 'success',
+        text1: 'Sucesso',
+        text2: 'Colaborador atualizado com sucesso.',
+        visibilityTime: 1500,
+      });
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível atualizar o colaborador.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Não foi possível atualizar o colaborador.',
+        visibilityTime: 1500,
+      });
     }
   };
 
@@ -98,9 +135,19 @@ export default function TelaColaboradores({ navigation }) {
             try {
               await deleteColaborador(id);
               loadColaboradoresAndServices();
-              Alert.alert('Sucesso', 'Colaborador excluído com sucesso.');
+              Toast.show({
+                type: 'success',
+                text1: 'Sucesso',
+                text2: 'Colaborador excluído com sucesso.',
+                visibilityTime: 1500,
+              });
             } catch (error) {
-              Alert.alert('Erro', 'Não foi possível excluir o colaborador.');
+              Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Não foi possível excluir o colaborador.',
+                visibilityTime: 1500,
+              });
             }
           },
           style: 'destructive',
@@ -112,7 +159,9 @@ export default function TelaColaboradores({ navigation }) {
   const startEditing = async (colaborador) => {
     setEditingColaborador(colaborador);
     setNewColaborador(colaborador.nome);
-    const servicesForColaborador = await getServicesForColaborador(colaborador.id);
+    const servicesForColaborador = await getServicesForColaborador(
+      colaborador.id
+    );
     setSelectedServices(servicesForColaborador.map((service) => service.id));
   };
 
@@ -190,7 +239,9 @@ export default function TelaColaboradores({ navigation }) {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalBackground}>
-          <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+          <View
+            style={[styles.modalContainer, { backgroundColor: theme.background }]}
+          >
             <Text style={[styles.modalTitle, { color: theme.text }]}>
               Selecione os serviços
             </Text>
@@ -236,13 +287,17 @@ export default function TelaColaboradores({ navigation }) {
         data={colaboradores}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <View style={[styles.colaboradorItem, { backgroundColor: theme.card }]}>
+          <View
+            style={[styles.colaboradorItem, { backgroundColor: theme.card }]}
+          >
             <Text style={{ color: theme.text }}>{item.nome}</Text>
             <View style={styles.actions}>
               <TouchableOpacity onPress={() => startEditing(item)}>
                 <Text style={styles.actionText}>Editar</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDeleteColaborador(item.id)}>
+              <TouchableOpacity
+                onPress={() => handleDeleteColaborador(item.id)}
+              >
                 <Text style={styles.excluirText}>Excluir</Text>
               </TouchableOpacity>
             </View>

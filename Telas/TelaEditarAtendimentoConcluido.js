@@ -1,3 +1,4 @@
+// TelaEditarAtendimentoConcluido.js
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
@@ -5,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  Alert,
   ScrollView,
   Modal,
 } from 'react-native';
@@ -16,6 +16,9 @@ import {
   getServices,
   updateAtendimento,
 } from '../database';
+
+// Import Toast
+import Toast from 'react-native-toast-message';
 
 export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
   const { theme, isDarkMode } = useContext(ThemeContext);
@@ -49,7 +52,12 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
         setSelectedColaboradores([appointment.colaboradorId]);
       }
     } catch (error) {
-      Alert.alert('Erro ao carregar serviços e colaboradores.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Erro ao carregar serviços e colaboradores.',
+        visibilityTime: 1500,
+      });
     }
   };
 
@@ -69,13 +77,18 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
         prev.filter((id) => id !== colaboradorId)
       );
     } else {
-      setSelectedColaboradores((prev) => [...prev, colaboradorId]);
+      setSelectedColaboradores([colaboradorId]);
     }
   };
 
   const handleSaveChanges = async () => {
     if (selectedServices.length === 0) {
-      Alert.alert('Erro', 'Selecione pelo menos um serviço.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Selecione pelo menos um serviço.',
+        visibilityTime: 1500,
+      });
       return;
     }
 
@@ -86,16 +99,30 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
         selectedColaboradores.length > 0 ? selectedColaboradores[0] : null
       );
 
-      Alert.alert('Sucesso', 'Atendimento atualizado com sucesso.');
+      Toast.show({
+        type: 'success',
+        text1: 'Sucesso',
+        text2: 'Atendimento atualizado com sucesso.',
+        visibilityTime: 1500,
+      });
+
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Erro ao atualizar atendimento.');
+      Toast.show({
+        type: 'error',
+        text1: 'Erro',
+        text2: 'Erro ao atualizar atendimento.',
+        visibilityTime: 1500,
+      });
     }
   };
 
   const renderServiceItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.serviceItem}
+      style={[
+        styles.serviceItem,
+        { backgroundColor: theme.card, borderColor: theme.border },
+      ]}
       onPress={() => toggleServiceSelection(item.serviceName)}
     >
       <Text style={{ color: theme.text }}>{item.serviceName}</Text>
@@ -109,7 +136,10 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
 
   const renderColaboradorItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.serviceItem}
+      style={[
+        styles.serviceItem,
+        { backgroundColor: theme.card, borderColor: theme.border },
+      ]}
       onPress={() => toggleColaboradorSelection(item.id)}
     >
       <Text style={{ color: theme.text }}>{item.nome}</Text>
@@ -123,7 +153,10 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
 
   return (
     <ScrollView
-      contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={[
+        styles.container,
+        { backgroundColor: theme.background },
+      ]}
     >
       {/* Seção de Serviços */}
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Serviços</Text>
@@ -170,7 +203,7 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
         ]}
         onPress={() => setModalColabVisible(true)}
       >
-        <Text style={{ color: theme.text }}>Selecione os colaboradores</Text>
+        <Text style={{ color: theme.text }}>Selecione o colaborador</Text>
       </TouchableOpacity>
 
       {selectedColaboradores.length > 0 ? (
@@ -200,7 +233,9 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalBackground}>
-          <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+          <View
+            style={[styles.modalContainer, { backgroundColor: theme.background }]}
+          >
             <Text style={[styles.modalTitle, { color: theme.text }]}>
               Selecione os serviços
             </Text>
@@ -227,9 +262,11 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
         onRequestClose={() => setModalColabVisible(false)}
       >
         <View style={styles.modalBackground}>
-          <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+          <View
+            style={[styles.modalContainer, { backgroundColor: theme.background }]}
+          >
             <Text style={[styles.modalTitle, { color: theme.text }]}>
-              Selecione os colaboradores
+              Selecione o colaborador
             </Text>
             <FlatList
               data={colaboradores}
