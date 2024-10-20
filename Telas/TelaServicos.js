@@ -2,22 +2,32 @@ import React, { useEffect, useState, useContext } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { ThemeContext } from './tema';
 import { getServices, addService, deleteService, updateService, getAppointments, updateAppointment } from '../database';
-import { MaterialIcons } from '@expo/vector-icons'; // Para usar ícones
+import { MaterialIcons } from '@expo/vector-icons';
 
 const TelaServicos = () => {
-  const { theme } = useContext(ThemeContext);
+  const { theme, isDarkMode } = useContext(ThemeContext);
   const [services, setServices] = useState([]);
   const [newService, setNewService] = useState('');
+  const [newServiceDescription, setNewServiceDescription] = useState('');
   const [editingService, setEditingService] = useState(null);
 
   useEffect(() => {
     const loadServices = async () => {
       const storedServices = await getServices();
-      // Os serviços já são ordenados pelo banco de dados
       setServices(storedServices);
     };
     loadServices();
   }, []);
+
+  useEffect(() => {
+    if (editingService) {
+      setNewService(editingService.serviceName);
+      setNewServiceDescription(editingService.description || '');
+    } else {
+      setNewService('');
+      setNewServiceDescription('');
+    }
+  }, [editingService]);
 
   const checkServiceLinkedToAppointment = async (serviceName) => {
     const appointments = await getAppointments();
@@ -31,8 +41,9 @@ const TelaServicos = () => {
     }
 
     try {
-      await addService(newService, 0); // Adiciona o serviço como não favorito
+      await addService(newService, newServiceDescription, 0);
       setNewService('');
+      setNewServiceDescription('');
       const updatedServices = await getServices();
       setServices(updatedServices);
     } catch (error) {
@@ -104,9 +115,9 @@ const TelaServicos = () => {
   };
 
   const toggleFavorite = async (service) => {
-    const newFavoriteStatus = service.isFavorite ? 0 : 1; // Alterna entre 0 e 1
+    const newFavoriteStatus = service.isFavorite ? 0 : 1;
     try {
-      await updateService(service.id, service.serviceName, newFavoriteStatus); // Atualiza o status de favorito no banco de dados
+      await updateService(service.id, service.serviceName, service.description, newFavoriteStatus);
       const updatedServices = await getServices();
       setServices(updatedServices);
     } catch (error) {
@@ -121,8 +132,9 @@ const TelaServicos = () => {
     }
 
     try {
-      await updateService(editingService.id, newService, editingService.isFavorite); // Mantém o status de favorito
+      await updateService(editingService.id, newService, newServiceDescription, editingService.isFavorite);
       setNewService('');
+      setNewServiceDescription('');
       setEditingService(null);
       const updatedServices = await getServices();
       setServices(updatedServices);
@@ -138,10 +150,18 @@ const TelaServicos = () => {
 
       <TextInput
         style={[styles.input, { backgroundColor: theme.card, color: theme.text }]}
-        placeholder="Novo Serviço"
-        placeholderTextColor={theme.text === '#000000' ? '#000000' : '#c7c7cc'}
+        placeholder="Nome do Serviço"
+        placeholderTextColor={isDarkMode ? '#c7c7cc' : '#7c7c7c'}
         value={newService}
         onChangeText={setNewService}
+      />
+
+      <TextInput
+        style={[styles.input, { backgroundColor: theme.card, color: theme.text }]}
+        placeholder="Descrição do Serviço"
+        placeholderTextColor={isDarkMode ? '#c7c7cc' : '#7c7c7c'}
+        value={newServiceDescription}
+        onChangeText={setNewServiceDescription}
       />
 
       {editingService ? (
@@ -161,14 +181,19 @@ const TelaServicos = () => {
           <View style={[styles.serviceItem, { backgroundColor: theme.card }]}>
             <TouchableOpacity onPress={() => toggleFavorite(item)} style={styles.favoriteButton}>
               <MaterialIcons
-                name={item.isFavorite ? "star" : "star-outline"} // Usa estrela preenchida se favorito
+                name={item.isFavorite ? "star" : "star-outline"}
                 size={24}
-                color={item.isFavorite ? "gold" : "gray"} // Dourado se favorito, cinza se não
+                color={item.isFavorite ? "gold" : "gray"}
               />
             </TouchableOpacity>
-            <Text style={{ color: theme.text, flex: 1 }}>{item.serviceName}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: theme.text, fontWeight: 'bold' }}>{item.serviceName}</Text>
+              {item.description ? (
+                <Text style={{ color: theme.text, fontSize: 12 }}>{item.description}</Text>
+              ) : null}
+            </View>
             <View style={styles.actions}>
-              <TouchableOpacity onPress={() => { setEditingService(item); setNewService(item.serviceName); }}>
+              <TouchableOpacity onPress={() => { setEditingService(item); }}>
                 <Text style={styles.actionText}>Editar</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => handleDeleteService(item.id, item.serviceName)}>

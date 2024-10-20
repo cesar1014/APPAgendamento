@@ -6,8 +6,6 @@ const openDatabase = async () => {
   return db;
 };
 
-
-
 // Função para criar as tabelas, se necessário
 export const createTablesIfNeeded = async () => {
   const db = await openDatabase();
@@ -30,6 +28,7 @@ export const createTablesIfNeeded = async () => {
       CREATE TABLE IF NOT EXISTS services (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         serviceName TEXT NOT NULL UNIQUE,
+        description TEXT,
         isFavorite INTEGER DEFAULT 0
       );
 
@@ -57,42 +56,27 @@ export const createTablesIfNeeded = async () => {
       );
     `);
 
+    // Verificar se a coluna 'description' existe na tabela 'services'
+    const columnsInfo = await db.getAllAsync(`PRAGMA table_info(services);`);
+    const hasDescriptionColumn = columnsInfo.some(column => column.name === 'description');
+
+    if (!hasDescriptionColumn) {
+      // Adicionar a coluna 'description' à tabela 'services'
+      await db.runAsync(`ALTER TABLE services ADD COLUMN description TEXT;`);
+      console.log('Coluna description adicionada à tabela services.');
+    }
+
     console.log('Tabelas criadas/verificadas com sucesso.');
+
+    // Inicializar os serviços padrão com descrições
+    await initializeDefaultServices();
   } catch (error) {
     console.error('Erro ao criar as tabelas:', error);
     throw error;
   }
 };
 
-// Função para verificar se as tabelas existem
-export const checkTablesExist = async () => {
-  const db = await openDatabase();
-  try {
-    const tables = [
-      'appointments',
-      'services',
-      'colaboradores',
-      'service_colaboradores',
-      'atendimentos',
-    ];
-    for (const table of tables) {
-      const result = await db.getFirstAsync(
-        `SELECT name FROM sqlite_master WHERE type='table' AND name=?;`,
-        [table]
-      );
-      if (!result) {
-        console.error(`Tabela ${table} não existe.`);
-      } else {
-        console.log(`Tabela ${table} existe.`);
-      }
-    }
-  } catch (error) {
-    console.error('Erro ao verificar se as tabelas existem:', error);
-    throw error;
-  }
-};
-
-// Função para inicializar serviços padrão
+// Função para inicializar serviços padrão com descrições específicas
 export const initializeDefaultServices = async () => {
   const db = await openDatabase();
   try {
@@ -101,19 +85,31 @@ export const initializeDefaultServices = async () => {
     const count = result.count;
 
     if (count === 0) {
-      // Inserir serviços padrão com isFavorite = 0
-      await db.runAsync(
-        'INSERT INTO services (serviceName, isFavorite) VALUES (?, ?);',
-        ['Banho', 0]
-      );
-      await db.runAsync(
-        'INSERT INTO services (serviceName, isFavorite) VALUES (?, ?);',
-        ['Tosa', 0]
-      );
-      await db.runAsync(
-        'INSERT INTO services (serviceName, isFavorite) VALUES (?, ?);',
-        ['Tosa e Banho', 0]
-      );
+      // Inserir serviços padrão com as descrições especificadas e isFavorite = 0
+      const defaultServices = [
+        {
+          serviceName: 'Banho',
+          description: 'Limpeza completa com produtos especiais, deixando seu pet fresco e saudável.',
+          isFavorite: 0,
+        },
+        {
+          serviceName: 'Tosa',
+          description: 'Corte personalizado que realça a beleza do seu bichinho, feito com cuidado e atenção.',
+          isFavorite: 0,
+        },
+        {
+          serviceName: 'Banho e Tosa',
+          description: 'Serviço completo de higiene e estética para pets.',
+          isFavorite: 0,
+        },
+      ];
+
+      for (const service of defaultServices) {
+        await db.runAsync(
+          'INSERT INTO services (serviceName, description, isFavorite) VALUES (?, ?, ?);',
+          [service.serviceName, service.description, service.isFavorite]
+        );
+      }
 
       console.log('Serviços padrão inseridos com sucesso.');
     } else {
@@ -123,47 +119,6 @@ export const initializeDefaultServices = async () => {
     console.error('Erro ao inicializar serviços padrão:', error);
     throw error;
   }
-};
-
-// Adicionar atendimento
-export const addAtendimento = async (
-  appointmentId,
-  serviceDescription,
-  colaboradorId = null
-) => {
-  const db = await openDatabase();
-  await db.runAsync(
-    'INSERT INTO atendimentos (appointmentId, serviceDescription, colaboradorId, atendimentoConcluido) VALUES (?, ?, ?, 1);',
-    [appointmentId, serviceDescription, colaboradorId]
-  );
-};
-
-// Obter atendimentos em andamento
-export const getAtendimentos = async () => {
-  const db = await openDatabase();
-  return await db.getAllAsync(
-    'SELECT * FROM atendimentos WHERE atendimentoConcluido = 0;'
-  );
-};
-
-// Finalizar atendimento
-export const finalizarAtendimento = async (id) => {
-  const db = await openDatabase();
-  await db.runAsync('UPDATE atendimentos SET atendimentoConcluido = 1 WHERE id = ?;', [id]);
-};
-
-// Obter atendimentos concluídos
-export const getAtendimentosConcluidos = async () => {
-  const db = await openDatabase();
-  return await db.getAllAsync(
-    'SELECT * FROM atendimentos WHERE atendimentoConcluido = 1;'
-  );
-};
-
-// Deletar atendimento
-export const deleteAtendimento = async (id) => {
-  const db = await openDatabase();
-  await db.runAsync('DELETE FROM atendimentos WHERE id = ?;', [id]);
 };
 
 // Função para adicionar um agendamento
@@ -235,7 +190,6 @@ export const getAppointments = async () => {
 };
 
 // Função para obter agendamentos concluídos
-// Função para obter agendamentos concluídos
 export const getConcludedAppointments = async () => {
   const db = await openDatabase();
   try {
@@ -251,13 +205,6 @@ export const getConcludedAppointments = async () => {
     console.error('Erro ao obter agendamentos concluídos:', error);
     throw error;
   }
-};
-export const updateAtendimento = async (id, serviceDescription, colaboradorId = null) => {
-  const db = await openDatabase();
-  await db.runAsync(
-    'UPDATE atendimentos SET serviceDescription = ?, colaboradorId = ? WHERE id = ?;',
-    [serviceDescription, colaboradorId, id]
-  );
 };
 
 // Função para deletar um agendamento
@@ -275,13 +222,13 @@ export const deleteAppointment = async (id) => {
   }
 };
 
-// Função para adicionar um serviço
-export const addService = async (serviceName, isFavorite = 0) => {
+// Função para adicionar um serviço com descrição
+export const addService = async (serviceName, description = '', isFavorite = 0) => {
   const db = await openDatabase();
   try {
     const result = await db.runAsync(
-      'INSERT INTO services (serviceName, isFavorite) VALUES (?, ?);',
-      [serviceName, isFavorite]
+      'INSERT INTO services (serviceName, description, isFavorite) VALUES (?, ?, ?);',
+      [serviceName, description, isFavorite]
     );
     console.log('Serviço adicionado com sucesso:', result.lastInsertRowId);
   } catch (error) {
@@ -290,7 +237,7 @@ export const addService = async (serviceName, isFavorite = 0) => {
   }
 };
 
-// Função para obter todos os serviços
+// Função para obter todos os serviços (incluindo a descrição)
 export const getServices = async () => {
   const db = await openDatabase();
   try {
@@ -304,13 +251,13 @@ export const getServices = async () => {
   }
 };
 
-// Função para atualizar um serviço
-export const updateService = async (id, serviceName, isFavorite = 0) => {
+// Função para atualizar um serviço com descrição
+export const updateService = async (id, serviceName, description = '', isFavorite = 0) => {
   const db = await openDatabase();
   try {
     const result = await db.runAsync(
-      'UPDATE services SET serviceName = ?, isFavorite = ? WHERE id = ?;',
-      [serviceName, isFavorite, id]
+      'UPDATE services SET serviceName = ?, description = ?, isFavorite = ? WHERE id = ?;',
+      [serviceName, description, isFavorite, id]
     );
     console.log('Serviço atualizado com sucesso:', result.changes);
   } catch (error) {
@@ -475,18 +422,80 @@ export const getServicesForColaborador = async (colaboradorId) => {
   }
 };
 
-// Função para obter agendamentos vinculados a um serviço específico
-export const getAppointmentsLinkedToService = async (serviceDescription) => {
+// Função para adicionar um atendimento
+export const addAtendimento = async (
+  appointmentId,
+  serviceDescription,
+  colaboradorId = null
+) => {
+  const db = await openDatabase();
+  await db.runAsync(
+    'INSERT INTO atendimentos (appointmentId, serviceDescription, colaboradorId, atendimentoConcluido) VALUES (?, ?, ?, 1);',
+    [appointmentId, serviceDescription, colaboradorId]
+  );
+};
+
+// Obter atendimentos em andamento
+export const getAtendimentos = async () => {
+  const db = await openDatabase();
+  return await db.getAllAsync(
+    'SELECT * FROM atendimentos WHERE atendimentoConcluido = 0;'
+  );
+};
+
+// Finalizar atendimento
+export const finalizarAtendimento = async (id) => {
+  const db = await openDatabase();
+  await db.runAsync('UPDATE atendimentos SET atendimentoConcluido = 1 WHERE id = ?;', [id]);
+};
+
+// Obter atendimentos concluídos
+export const getAtendimentosConcluidos = async () => {
+  const db = await openDatabase();
+  return await db.getAllAsync(
+    'SELECT * FROM atendimentos WHERE atendimentoConcluido = 1;'
+  );
+};
+
+// Deletar atendimento
+export const deleteAtendimento = async (id) => {
+  const db = await openDatabase();
+  await db.runAsync('DELETE FROM atendimentos WHERE id = ?;', [id]);
+};
+
+// Função para atualizar um atendimento
+export const updateAtendimento = async (id, serviceDescription, colaboradorId = null) => {
+  const db = await openDatabase();
+  await db.runAsync(
+    'UPDATE atendimentos SET serviceDescription = ?, colaboradorId = ? WHERE id = ?;',
+    [serviceDescription, colaboradorId, id]
+  );
+};
+
+// Função para verificar se as tabelas existem
+export const checkTablesExist = async () => {
   const db = await openDatabase();
   try {
-    const appointments = await db.getAllAsync(
-      'SELECT * FROM appointments WHERE serviceDescription = ?;',
-      [serviceDescription]
-    );
-    return appointments;
+    const tables = [
+      'appointments',
+      'services',
+      'colaboradores',
+      'service_colaboradores',
+      'atendimentos',
+    ];
+    for (const table of tables) {
+      const result = await db.getFirstAsync(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name=?;`,
+        [table]
+      );
+      if (!result) {
+        console.error(`Tabela ${table} não existe.`);
+      } else {
+        console.log(`Tabela ${table} existe.`);
+      }
+    }
   } catch (error) {
-    console.error('Erro ao obter agendamentos vinculados ao serviço:', error);
+    console.error('Erro ao verificar se as tabelas existem:', error);
     throw error;
   }
 };
-

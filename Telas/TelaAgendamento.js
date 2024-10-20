@@ -16,7 +16,7 @@ import {
   getAppointments,
   getServices,
   getColaboradores,
-  getColaboradoresForService, // Importado
+  getColaboradoresForService,
 } from '../database';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RNPickerSelect from 'react-native-picker-select';
@@ -31,12 +31,13 @@ export default function TelaAgendamento({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [serviceDescription, setServiceDescription] = useState(null);
+  const [serviceDescriptionText, setServiceDescriptionText] = useState('');
   const [date, setDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState('08:00');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [services, setServices] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
-  const [allColaboradores, setAllColaboradores] = useState([]); // Todos os colaboradores
+  const [allColaboradores, setAllColaboradores] = useState([]);
   const [colaboradorId, setColaboradorId] = useState(null);
   const [errors, setErrors] = useState({});
 
@@ -48,8 +49,8 @@ export default function TelaAgendamento({
       setServices(storedServices);
 
       const storedColaboradores = await getColaboradores();
-      setAllColaboradores(storedColaboradores); // Armazenamos todos os colaboradores
-      setColaboradores(storedColaboradores); // Inicialmente, todos os colaboradores
+      setAllColaboradores(storedColaboradores);
+      setColaboradores(storedColaboradores);
     };
 
     loadServicesAndColaboradores();
@@ -66,22 +67,39 @@ export default function TelaAgendamento({
     }
   }, [appointment]);
 
-  // Novo useEffect para atualizar a lista de colaboradores quando o serviço selecionado mudar
+  // Atualizar a descrição do serviço selecionado
+  useEffect(() => {
+    const updateServiceDescription = async () => {
+      if (serviceDescription) {
+        const selectedService = services.find(
+          (service) => service.serviceName === serviceDescription
+        );
+        if (selectedService) {
+          setServiceDescriptionText(selectedService.description || '');
+        } else {
+          setServiceDescriptionText('');
+        }
+      } else {
+        setServiceDescriptionText('');
+      }
+    };
+
+    updateServiceDescription();
+  }, [serviceDescription, services]);
+
+  // Atualizar a lista de colaboradores com base no serviço selecionado
   useEffect(() => {
     const updateColaboradoresList = async () => {
       if (serviceDescription) {
-        // Obter o ID do serviço selecionado
         const selectedService = services.find(
           (service) => service.serviceName === serviceDescription
         );
 
         if (selectedService) {
-          // Obter colaboradores associados ao serviço
           const associatedColaboradores = await getColaboradoresForService(
             selectedService.id
           );
 
-          // Filtrar colaboradores não associados
           const nonAssociatedColaboradores = allColaboradores.filter(
             (colaborador) =>
               !associatedColaboradores.some(
@@ -89,7 +107,6 @@ export default function TelaAgendamento({
               )
           );
 
-          // Ordenar as duas listas por nome
           associatedColaboradores.sort((a, b) =>
             a.nome.localeCompare(b.nome)
           );
@@ -97,7 +114,6 @@ export default function TelaAgendamento({
             a.nome.localeCompare(b.nome)
           );
 
-          // Combinar as listas, com os associados primeiro
           const combinedList = [
             ...associatedColaboradores,
             ...nonAssociatedColaboradores,
@@ -106,7 +122,6 @@ export default function TelaAgendamento({
           setColaboradores(combinedList);
         }
       } else {
-        // Se nenhum serviço estiver selecionado, mostrar todos os colaboradores em ordem alfabética
         const sortedColaboradores = [...allColaboradores].sort((a, b) =>
           a.nome.localeCompare(b.nome)
         );
@@ -131,7 +146,11 @@ export default function TelaAgendamento({
   const validateInputs = () => {
     const newErrors = {};
     if (!name.trim()) newErrors.name = 'Nome é obrigatório.';
-    if (!phone.trim()) newErrors.phone = 'Telefone é obrigatório.';
+    if (!phone.trim()) {
+      newErrors.phone = 'Telefone é obrigatório.';
+    } else if (!/^\d{10,11}$/.test(phone)) {
+      newErrors.phone = 'Telefone inválido.';
+    }
     if (!serviceDescription) newErrors.service = 'Serviço é obrigatório.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -282,7 +301,7 @@ export default function TelaAgendamento({
         placeholder="Telefone"
         placeholderTextColor={isDarkMode ? '#c7c7cc' : '#7c7c7c'}
         value={phone}
-        onChangeText={setPhone}
+        onChangeText={(text) => setPhone(text.replace(/\D/g, ''))}
         keyboardType="phone-pad"
       />
       {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
@@ -327,6 +346,19 @@ export default function TelaAgendamento({
         />
       </View>
       {errors.service && <Text style={styles.errorText}>{errors.service}</Text>}
+
+      {/* Exibir a descrição do serviço selecionado */}
+      {serviceDescriptionText ? (
+        <Text
+          style={{
+            color: theme.text,
+            marginBottom: 10,
+            fontStyle: 'italic',
+          }}
+        >
+          {serviceDescriptionText}
+        </Text>
+      ) : null}
 
       {/* Mostrar o Picker de Colaboradores apenas se houver colaboradores */}
       {colaboradores.length > 0 && (
