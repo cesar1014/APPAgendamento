@@ -1,4 +1,3 @@
-// TelaAtendimentos.js
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View,

@@ -23,10 +23,10 @@ import TelaAtendimento from './Telas/TelaAtendimentos';
 import TelaAtendimentosConcluidos from './Telas/TelaAtendimentosConcluidos';
 import TelaEditarAtendimentoConcluido from './Telas/TelaEditarAtendimentoConcluido';
 
-import WelcomeScreen from './Telas/WelcomeScreen';
-import QuickTourScreen from './Telas/QuickTourScreen';
-import InitialSetupScreen from './Telas/InitialSetupScreen';
-import SettingsScreen from './Telas/SettingsScreen';
+import WelcomeScreen from './Telas/TelaBemVindo';
+import QuickTourScreen from './Telas/TelaIntroducao';
+import InitialSetupScreen from './Telas/TelaInicializacao';
+import SettingsScreen from './Telas/TelaConfiguracoes';
 
 import {
   createTablesIfNeeded,
