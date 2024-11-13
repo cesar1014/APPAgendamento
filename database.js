@@ -1,9 +1,79 @@
 import * as SQLite from 'expo-sqlite';
 
+let db;
+
 // Função para abrir o banco de dados
 const openDatabase = async () => {
-  const db = await SQLite.openDatabaseAsync('appointments.db');
+  if (db) {
+    return db;
+  }
+  db = await SQLite.openDatabaseAsync('appointments.db');
   return db;
+};
+
+// Mapeamento de serviços padrão por ramo de atividade
+const defaultServicesBySector = {
+  'Oficina Mecânica': [
+    {
+      serviceName: 'Troca de Óleo',
+      description: 'Troca de óleo do motor.',
+      isFavorite: 0,
+    },
+    {
+      serviceName: 'Troca de Pneu',
+      description: 'Substituição de pneus desgastados.',
+      isFavorite: 0,
+    },
+    {
+      serviceName: 'Revisão',
+      description: 'Revisão completa do veículo.',
+      isFavorite: 0,
+    },
+    {
+      serviceName: 'Balanceamento',
+      description: 'Balanceamento das rodas.',
+      isFavorite: 0,
+    },
+  ],
+  'Barbearia': [
+    {
+      serviceName: 'Corte de Cabelo',
+      description: 'Corte personalizado de cabelo.',
+      isFavorite: 0,
+    },
+    {
+      serviceName: 'Barba',
+      description: 'Aparar e desenhar a barba.',
+      isFavorite: 0,
+    },
+    {
+      serviceName: 'Sobrancelha',
+      description: 'Modelagem das sobrancelhas.',
+      isFavorite: 0,
+    },
+  ],
+  'Pet Shop': [
+    {
+      serviceName: 'Banho',
+      description: 'Banho completo para seu pet.',
+      isFavorite: 0,
+    },
+    {
+      serviceName: 'Tosa',
+      description: 'Corte de pelos do pet.',
+      isFavorite: 0,
+    },
+    {
+      serviceName: 'Banho e Tosa',
+      description: 'Serviço completo de higiene e estética para pets.',
+      isFavorite: 0,
+    },
+    {
+      serviceName: 'Consulta Veterinária',
+      description: 'Consulta com veterinário especializado.',
+      isFavorite: 0,
+    },
+  ],
 };
 
 // Função para criar as tabelas, se necessário
@@ -13,6 +83,11 @@ export const createTablesIfNeeded = async () => {
     // Ativar o modo WAL e criar tabelas em um único execAsync
     await db.execAsync(`
       PRAGMA journal_mode = WAL;
+
+      CREATE TABLE IF NOT EXISTS activityFields (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE
+      );
 
       CREATE TABLE IF NOT EXISTS appointments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,9 +102,11 @@ export const createTablesIfNeeded = async () => {
 
       CREATE TABLE IF NOT EXISTS services (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        serviceName TEXT NOT NULL UNIQUE,
+        serviceName TEXT NOT NULL,
         description TEXT,
-        isFavorite INTEGER DEFAULT 0
+        isFavorite INTEGER DEFAULT 0,
+        activityFieldId INTEGER,
+        FOREIGN KEY (activityFieldId) REFERENCES activityFields(id)
       );
 
       CREATE TABLE IF NOT EXISTS colaboradores (
@@ -56,67 +133,179 @@ export const createTablesIfNeeded = async () => {
       );
     `);
 
-    // Verificar se a coluna 'description' existe na tabela 'services'
-    const columnsInfo = await db.getAllAsync(`PRAGMA table_info(services);`);
-    const hasDescriptionColumn = columnsInfo.some(column => column.name === 'description');
-
-    if (!hasDescriptionColumn) {
-      // Adicionar a coluna 'description' à tabela 'services'
-      await db.runAsync(`ALTER TABLE services ADD COLUMN description TEXT;`);
-      console.log('Coluna description adicionada à tabela services.');
+    // Inserir ramos de atividade predefinidos (sem inserir serviços)
+    for (const sector of Object.keys(defaultServicesBySector)) {
+      await db.runAsync('INSERT OR IGNORE INTO activityFields (name) VALUES (?);', [sector]);
     }
 
     console.log('Tabelas criadas/verificadas com sucesso.');
-
-    // Inicializar os serviços padrão com descrições
-    await initializeDefaultServices();
   } catch (error) {
     console.error('Erro ao criar as tabelas:', error);
     throw error;
   }
 };
 
-// Função para inicializar serviços padrão com descrições específicas
-export const initializeDefaultServices = async () => {
+
+// Função para inserir serviços predefinidos com base no ramo selecionado
+export const insertDefaultServices = async (activityFieldName) => {
   const db = await openDatabase();
   try {
-    // Verifica se já existem serviços no banco de dados
-    const result = await db.getFirstAsync('SELECT COUNT(*) as count FROM services;');
-    const count = result.count;
-
-    if (count === 0) {
-      // Inserir serviços padrão com as descrições especificadas e isFavorite = 0
-      const defaultServices = [
-        {
-          serviceName: 'Banho',
-          description: 'Limpeza completa com produtos especiais, deixando seu pet fresco e saudável.',
-          isFavorite: 0,
-        },
-        {
-          serviceName: 'Tosa',
-          description: 'Corte personalizado que realça a beleza do seu bichinho, feito com cuidado e atenção.',
-          isFavorite: 0,
-        },
-        {
-          serviceName: 'Banho e Tosa',
-          description: 'Serviço completo de higiene e estética para pets.',
-          isFavorite: 0,
-        },
-      ];
-
-      for (const service of defaultServices) {
-        await db.runAsync(
-          'INSERT INTO services (serviceName, description, isFavorite) VALUES (?, ?, ?);',
-          [service.serviceName, service.description, service.isFavorite]
-        );
-      }
-
-      console.log('Serviços padrão inseridos com sucesso.');
-    } else {
-      console.log('Serviços já existem no banco de dados.');
+    const services = defaultServicesBySector[activityFieldName];
+    if (!services) {
+      console.warn(`Nenhum serviço predefinido encontrado para o ramo: ${activityFieldName}`);
+      return;
     }
+
+    // Obter o ID do ramo de atividade
+    const sectorData = await db.getFirstAsync(
+      'SELECT id FROM activityFields WHERE name = ?;',
+      [activityFieldName]
+    );
+
+    if (!sectorData) {
+      console.error(`Ramo de atividade não encontrado: ${activityFieldName}`);
+      return;
+    }
+
+    const activityFieldId = sectorData.id;
+
+    // Inserir serviços predefinidos
+    for (const service of services) {
+      await db.runAsync(
+        'INSERT OR IGNORE INTO services (serviceName, description, isFavorite, activityFieldId) VALUES (?, ?, ?, ?);',
+        [service.serviceName, service.description, service.isFavorite, activityFieldId]
+      );
+    }
+
+    console.log(`Serviços predefinidos inseridos para o ramo: ${activityFieldName}`);
   } catch (error) {
-    console.error('Erro ao inicializar serviços padrão:', error);
+    console.error('Erro ao inserir serviços predefinidos:', error);
+    throw error;
+  }
+};
+
+// Função para obter um ramo de atividade pelo nome
+export const getActivityFieldByName = async (activityFieldName) => {
+  const db = await openDatabase();
+  try {
+    const result = await db.getFirstAsync(
+      'SELECT * FROM activityFields WHERE name = ?;',
+      [activityFieldName]
+    );
+    return result || null;
+  } catch (error) {
+    console.error('Erro ao buscar ramo de atividade por nome:', error);
+    throw error;
+  }
+};
+
+// Função para obter todos os ramos de atividade
+export const getAllActivityFields = async () => {
+  const db = await openDatabase();
+  try {
+    const activityFields = await db.getAllAsync('SELECT * FROM activityFields;');
+    return activityFields;
+  } catch (error) {
+    console.error('Erro ao obter ramos de atividade:', error);
+    throw error;
+  }
+};
+
+export const updateActivityFields = async () => {
+  const db = await openDatabase();
+  try {
+    for (const sector of Object.keys(defaultServicesBySector)) {
+      await db.runAsync('INSERT OR IGNORE INTO activityFields (name) VALUES (?);', [sector]);
+    }
+    console.log('Ramos de atividade atualizados com sucesso.');
+  } catch (error) {
+    console.error('Erro ao atualizar ramos de atividade:', error);
+    throw error;
+  }
+};
+
+// Função para obter serviços por ramo de atividade
+export const getServicesBySector = async (activityFieldName) => {
+  const db = await openDatabase();
+  try {
+    const sectorData = await db.getFirstAsync(
+      'SELECT id FROM activityFields WHERE name = ?;',
+      [activityFieldName]
+    );
+
+    if (!sectorData) {
+      console.warn(`Ramo de atividade não encontrado: ${activityFieldName}`);
+      return [];
+    }
+
+    const activityFieldId = sectorData.id;
+
+    const services = await db.getAllAsync(
+      'SELECT * FROM services WHERE activityFieldId = ? ORDER BY isFavorite DESC, serviceName ASC;',
+      [activityFieldId]
+    );
+    return services;
+  } catch (error) {
+    console.error('Erro ao obter serviços por ramo:', error);
+    throw error;
+  }
+};
+
+// Função para importar serviços de outro ramo de atividade
+export const importServicesFromSector = async (sourceSectorName, targetActivityFieldId) => {
+  const db = await openDatabase();
+  try {
+    // Obter o ID do ramo de origem
+    const sourceSector = await db.getFirstAsync(
+      'SELECT id FROM activityFields WHERE name = ?;',
+      [sourceSectorName]
+    );
+
+    if (!sourceSector) {
+      console.error('Ramo de atividade de origem não encontrado.');
+      return;
+    }
+
+    const sourceSectorId = sourceSector.id;
+
+    // Verificar se existem serviços para o ramo de origem
+    let servicesToImport = await db.getAllAsync(
+      'SELECT serviceName, description, isFavorite FROM services WHERE activityFieldId = ?;',
+      [sourceSectorId]
+    );
+
+    // Se não houver serviços, inserir os serviços padrão para o ramo de origem
+    if (servicesToImport.length === 0) {
+      console.log(`Nenhum serviço encontrado para o ramo ${sourceSectorName}. Inserindo serviços padrão.`);
+      await insertDefaultServices(sourceSectorName);
+      // Recarregar os serviços após a inserção
+      servicesToImport = await db.getAllAsync(
+        'SELECT serviceName, description, isFavorite FROM services WHERE activityFieldId = ?;',
+        [sourceSectorId]
+      );
+    }
+
+    for (const service of servicesToImport) {
+      // Verificar se o serviço já existe no ramo atual para evitar duplicatas
+      const existingService = await db.getFirstAsync(
+        'SELECT id FROM services WHERE serviceName = ? AND activityFieldId = ?;',
+        [service.serviceName, targetActivityFieldId]
+      );
+
+      if (!existingService) {
+        await db.runAsync(
+          'INSERT INTO services (serviceName, description, isFavorite, activityFieldId) VALUES (?, ?, ?, ?);',
+          [service.serviceName, service.description, service.isFavorite, targetActivityFieldId]
+        );
+        console.log(`Serviço importado: ${service.serviceName}`);
+      } else {
+        console.log(`Serviço já existe: ${service.serviceName}`);
+      }
+    }
+
+    console.log(`Serviços importados de ${sourceSectorName} com sucesso.`);
+  } catch (error) {
+    console.error('Erro ao importar serviços:', error);
     throw error;
   }
 };
@@ -223,12 +412,17 @@ export const deleteAppointment = async (id) => {
 };
 
 // Função para adicionar um serviço com descrição
-export const addService = async (serviceName, description = '', isFavorite = 0) => {
+export const addService = async (
+  serviceName,
+  description = '',
+  isFavorite = 0,
+  activityFieldId = null
+) => {
   const db = await openDatabase();
   try {
     const result = await db.runAsync(
-      'INSERT INTO services (serviceName, description, isFavorite) VALUES (?, ?, ?);',
-      [serviceName, description, isFavorite]
+      'INSERT INTO services (serviceName, description, isFavorite, activityFieldId) VALUES (?, ?, ?, ?);',
+      [serviceName, description, isFavorite, activityFieldId]
     );
     console.log('Serviço adicionado com sucesso:', result.lastInsertRowId);
   } catch (error) {
@@ -237,22 +431,28 @@ export const addService = async (serviceName, description = '', isFavorite = 0) 
   }
 };
 
-// Função para obter todos os serviços (incluindo a descrição)
-export const getServices = async () => {
+
+// Função para obter todos os serviços (incluindo a descrição e o ramo)
+export const getAllServices = async () => {
   const db = await openDatabase();
   try {
     const services = await db.getAllAsync(
-      'SELECT * FROM services ORDER BY isFavorite DESC, serviceName ASC;'
+      'SELECT s.*, af.name as activityFieldName FROM services s LEFT JOIN activityFields af ON s.activityFieldId = af.id ORDER BY s.serviceName ASC;'
     );
     return services;
   } catch (error) {
-    console.error('Erro ao obter serviços:', error);
+    console.error('Erro ao obter todos os serviços:', error);
     throw error;
   }
 };
 
 // Função para atualizar um serviço com descrição
-export const updateService = async (id, serviceName, description = '', isFavorite = 0) => {
+export const updateService = async (
+  id,
+  serviceName,
+  description = '',
+  isFavorite = 0
+) => {
   const db = await openDatabase();
   try {
     const result = await db.runAsync(
@@ -422,6 +622,19 @@ export const getServicesForColaborador = async (colaboradorId) => {
   }
 };
 
+export const getServices = async () => {
+  const db = await openDatabase();
+  try {
+    const services = await db.getAllAsync(
+      'SELECT * FROM services ORDER BY isFavorite DESC, serviceName ASC;'
+    );
+    return services;
+  } catch (error) {
+    console.error('Erro ao obter serviços:', error);
+    throw error;
+  }
+};
+
 // Função para adicionar um atendimento
 export const addAtendimento = async (
   appointmentId,
@@ -472,7 +685,7 @@ export const updateAtendimento = async (id, serviceDescription, colaboradorId = 
   );
 };
 
-// Função para verificar se as tabelas existem
+// Função para verificar se as tabelas existem (para fins de depuração)
 export const checkTablesExist = async () => {
   const db = await openDatabase();
   try {
@@ -482,6 +695,7 @@ export const checkTablesExist = async () => {
       'colaboradores',
       'service_colaboradores',
       'atendimentos',
+      'activityFields',
     ];
     for (const table of tables) {
       const result = await db.getFirstAsync(
@@ -499,3 +713,8 @@ export const checkTablesExist = async () => {
     throw error;
   }
 };
+
+
+
+
+

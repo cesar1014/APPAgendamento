@@ -8,12 +8,19 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import { format, isSameDay, parseISO, isBefore } from 'date-fns';
+import {
+  format,
+  isSameDay,
+  parseISO,
+  isBefore,
+  isToday,
+} from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getAppointments, deleteAppointment } from '../database';
 import { ThemeContext } from './tema';
-import Toast from 'react-native-toast-message';
+import Toast from 'react-native-toast-message'
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 
 const getPeriodIcon = (time) => {
   const [hour] = time.split(':').map(Number);
@@ -101,7 +108,12 @@ const AppointmentCard = ({
   );
 };
 
-export default function TelaInicial({ navigation, appointments, setAppointments }) {
+export default function TelaInicial({
+  navigation,
+  appointments,
+  setAppointments,
+  businessInfo,
+}) {
   const { theme, isDarkMode } = useContext(ThemeContext);
   const [selectedDate, setSelectedDate] = useState(null);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
@@ -182,9 +194,29 @@ export default function TelaInicial({ navigation, appointments, setAppointments 
     setSelectedDate(null);
   };
 
+  // Adicionar o botão de configurações no cabeçalho
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Settings')}
+          style={{ marginRight: 15 }}
+        >
+          <Ionicons
+            name="settings-outline"
+            size={24}
+            color={theme.headerText}
+          />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, theme]);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.title, { color: theme.text }]}>Sua agenda</Text>
+      <Text style={[styles.title, { color: theme.text }]}>
+        {'Sua agenda'}
+      </Text>
       <Text style={[styles.subtitle, { color: theme.text }]}>
         Aqui você pode ver todos os clientes e serviços agendados.
       </Text>
@@ -354,7 +386,7 @@ const styles = StyleSheet.create({
   editText: {
     fontSize: 16,
     marginRight: 20,
-    color: '#8A2BE2'
+    color: '#8A2BE2',
   },
   removeText: {
     fontSize: 16,

@@ -23,19 +23,22 @@ import TelaAtendimento from './Telas/TelaAtendimentos';
 import TelaAtendimentosConcluidos from './Telas/TelaAtendimentosConcluidos';
 import TelaEditarAtendimentoConcluido from './Telas/TelaEditarAtendimentoConcluido';
 
+import WelcomeScreen from './Telas/WelcomeScreen';
+import QuickTourScreen from './Telas/QuickTourScreen';
+import InitialSetupScreen from './Telas/InitialSetupScreen';
+import SettingsScreen from './Telas/SettingsScreen';
+
 import {
   createTablesIfNeeded,
   getAppointments,
   checkTablesExist,
-  initializeDefaultServices,
+  updateActivityFields,
 } from './database';
 import { ThemeProvider, ThemeContext } from './Telas/tema';
 
-// Importação do Toast
 import Toast from 'react-native-toast-message';
-import CustomToast from './CustomToast'; // Ajuste o caminho conforme necessário
+import CustomToast from './CustomToast';
 
-// Desativa logs no ambiente de produção
 if (!__DEV__) {
   console.log = () => {};
   console.warn = () => {};
@@ -78,19 +81,33 @@ function ToggleButton() {
   );
 }
 
-function LogoTitle() {
+function LogoTitle({ businessName, logoUri }) {
+  const displayName =
+    businessName && businessName.length > 15
+      ? businessName.substring(0, 15) + '...'
+      : businessName || 'IFPLANNER';
+
   return (
     <View style={styles.headerContainer}>
       <View style={styles.logoTitleContainer}>
-        <Image source={require('./assets/icon.png')} style={styles.logo} />
-        <Text style={styles.logoText}>IFPLANNER</Text>
+        {logoUri ? (
+          <Image source={{ uri: logoUri }} style={styles.logo} />
+        ) : (
+          <Image source={require('./assets/icon.png')} style={styles.logo} />
+        )}
+        <Text style={styles.logoText}>{displayName}</Text>
       </View>
       <ToggleButton />
     </View>
   );
 }
 
-function AppNavigator({ appointments, setAppointments }) {
+function AppNavigator({
+  appointments,
+  setAppointments,
+  businessInfo,
+  setBusinessInfo,
+}) {
   const { theme, isDarkMode } = useContext(ThemeContext);
 
   useEffect(() => {
@@ -107,94 +124,142 @@ function AppNavigator({ appointments, setAppointments }) {
           headerTintColor: theme.headerText,
         }}
       >
-        <Stack.Screen
-          name="Home"
-          options={{ headerTitle: () => <LogoTitle /> }}
-        >
-          {(props) => (
-            <TelaInicial
-              {...props}
-              appointments={appointments}
-              setAppointments={setAppointments}
+        {/* Telas de Primeira Inicialização */}
+        {!businessInfo.isSetupComplete && (
+          <>
+            <Stack.Screen
+              name="Welcome"
+              component={WelcomeScreen}
+              options={{ headerShown: false }}
             />
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="EDITAR_ATENDIMENTO_CONCLUIDO"
-          component={TelaEditarAtendimentoConcluido}
-          options={{
-            headerTitle: 'Editar Atendimento',
-          }}
-        />
-        <Stack.Screen
-          name="AGENDAMENTO"
-          options={{
-            headerTitle: () => (
-              <Text
-                style={[
-                  styles.logoText,
-                  { color: '#9282FA', fontWeight: 'bold' },
-                ]}
-              >
-                AGENDAMENTO
-              </Text>
-            ),
-            headerStyle: {
-              backgroundColor: theme.headerBackground,
-            },
-            headerTintColor: theme.headerText,
-          }}
-        >
-          {(props) => (
-            <TelaAgendamentos
-              {...props}
-              appointments={appointments}
-              setAppointments={setAppointments}
+            <Stack.Screen
+              name="QuickTour"
+              component={QuickTourScreen}
+              options={{ headerShown: false }}
             />
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="ATENDIMENTO"
-          options={{
-            headerTitle: 'Atendimento',
-          }}
-        >
-          {(props) => (
-            <TelaAtendimento
-              {...props}
-              appointments={appointments}
-              setAppointments={setAppointments}
+            <Stack.Screen
+              name="InitialSetup"
+              options={{ headerTitle: 'Configuração Inicial' }}
+            >
+              {(props) => (
+                <InitialSetupScreen
+                  {...props}
+                  setBusinessInfo={setBusinessInfo}
+                />
+              )}
+            </Stack.Screen>
+          </>
+        )}
+
+        {/* Telas do Aplicativo */}
+        {businessInfo.isSetupComplete && (
+          <>
+            <Stack.Screen
+              name="Home"
+              options={{
+                headerTitle: () => (
+                  <LogoTitle
+                    businessName={businessInfo.name}
+                    logoUri={businessInfo.logo}
+                  />
+                ),
+              }}
+            >
+              {(props) => (
+                <TelaInicial
+                  {...props}
+                  appointments={appointments}
+                  setAppointments={setAppointments}
+                  businessInfo={businessInfo}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen
+              name="AGENDAMENTO"
+              options={{
+                headerTitle: 'Agendamento',
+              }}
+            >
+              {(props) => (
+                <TelaAgendamentos
+                  {...props}
+                  appointments={appointments}
+                  setAppointments={setAppointments}
+                  businessInfo={businessInfo}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen
+              name="ATENDIMENTO"
+              options={{
+                headerTitle: 'Atendimento',
+              }}
+            >
+              {(props) => (
+                <TelaAtendimento
+                  {...props}
+                  appointments={appointments}
+                  setAppointments={setAppointments}
+                  businessInfo={businessInfo}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen
+              name="GERENCIAR"
+              component={TelaGerenciar}
+              options={{
+                headerTitle: 'Gerenciar',
+              }}
             />
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="GERENCIAR"
-          component={TelaGerenciar}
-          options={{
-            headerTitle: 'Gerenciar',
-          }}
-        />
-        <Stack.Screen
-          name="SERVIÇOS"
-          component={TelaServicos}
-          options={{
-            headerTitle: 'Gerenciar Serviços',
-          }}
-        />
-        <Stack.Screen
-          name="COLABORADORES"
-          component={TelaColaboradores}
-          options={{
-            headerTitle: 'Gerenciar Colaboradores',
-          }}
-        />
-        <Stack.Screen
-          name="ATENDIMENTOS_CONCLUIDOS"
-          component={TelaAtendimentosConcluidos}
-          options={{
-            headerTitle: 'Atendimentos Concluídos',
-          }}
-        />
+            <Stack.Screen
+              name="SERVIÇOS"
+              options={{
+                headerTitle: 'Gerenciar Serviços',
+              }}
+            >
+              {(props) => (
+                <TelaServicos
+                  {...props}
+                  businessInfo={businessInfo}
+                  setBusinessInfo={setBusinessInfo}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen
+              name="COLABORADORES"
+              component={TelaColaboradores}
+              options={{
+                headerTitle: 'Gerenciar Colaboradores',
+              }}
+            />
+            <Stack.Screen
+              name="ATENDIMENTOS_CONCLUIDOS"
+              component={TelaAtendimentosConcluidos}
+              options={{
+                headerTitle: 'Atendimentos Concluídos',
+              }}
+            />
+            <Stack.Screen
+              name="EDITAR_ATENDIMENTO_CONCLUIDO"
+              component={TelaEditarAtendimentoConcluido}
+              options={{
+                headerTitle: 'Editar Atendimento',
+              }}
+            />
+            <Stack.Screen
+              name="Settings"
+              options={{ headerTitle: 'Configurações' }}
+            >
+              {(props) => (
+                <SettingsScreen
+                  {...props}
+                  businessInfo={businessInfo}
+                  setBusinessInfo={setBusinessInfo}
+                />
+              )}
+            </Stack.Screen>
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -203,36 +268,47 @@ function AppNavigator({ appointments, setAppointments }) {
 export default function App() {
   const [isDbReady, setIsDbReady] = useState(false);
   const [appointments, setAppointments] = useState([]);
+  const [businessInfo, setBusinessInfo] = useState({ isSetupComplete: false });
 
   useEffect(() => {
-    const initializeDatabase = async () => {
+    const initializeApp = async () => {
       try {
+        // Inicialização do banco de dados
         await createTablesIfNeeded();
-        await checkTablesExist(); // Verifica se as tabelas foram criadas
-
-        // Inicializa os serviços padrão
-        await initializeDefaultServices();
-
+        await checkTablesExist();
+        await updateActivityFields();
+        
         const storedAppointments = await getAppointments();
         setAppointments(storedAppointments);
 
+        // Verificar se é a primeira inicialização
+        const setupData = await AsyncStorage.getItem('businessInfo');
+        if (setupData) {
+          setBusinessInfo(JSON.parse(setupData));
+        }
+
         setIsDbReady(true);
       } catch (error) {
-        console.error('Erro ao inicializar o banco de dados:', error);
+        console.error('Erro ao inicializar o aplicativo:', error);
       }
     };
-    initializeDatabase();
+    initializeApp();
   }, []);
 
   const handleSetAppointments = useCallback((newAppointments) => {
     setAppointments(newAppointments);
   }, []);
 
+  const handleSetBusinessInfo = async (info) => {
+    setBusinessInfo(info);
+    await AsyncStorage.setItem('businessInfo', JSON.stringify(info));
+  };
+
   if (!isDbReady) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-        <Text>Inicializando banco de dados...</Text>
+        <ActivityIndicator size="large" color="#8A2BE2" />
+        <Text>Inicializando o aplicativo...</Text>
       </View>
     );
   }
@@ -242,7 +318,10 @@ export default function App() {
       <AppNavigator
         appointments={appointments}
         setAppointments={handleSetAppointments}
+        businessInfo={businessInfo}
+        setBusinessInfo={handleSetBusinessInfo}
       />
+
       {/* Configuração do Toast com o CustomToast */}
       <Toast
         config={{
@@ -267,10 +346,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 70,
-    height: 70,
-    marginRight: -10,
-    marginLeft: -20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: '#8A2BE2',
   },
   logoText: {
     fontSize: 20,

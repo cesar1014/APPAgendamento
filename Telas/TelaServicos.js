@@ -1,4 +1,3 @@
-// TelaServicos.js
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
@@ -8,18 +7,25 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { ThemeContext } from './tema';
 import {
-  getServices,
+  getServicesBySector,
   addService,
   deleteService,
   updateService,
   getAppointments,
   updateAppointment,
+  importServicesFromSector,
+  getAllActivityFields,
+  getActivityFieldByName,
 } from '../database';
 import { MaterialIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
+import { Picker } from '@react-native-picker/picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TelaServicos = () => {
   const { theme, isDarkMode } = useContext(ThemeContext);
@@ -27,13 +33,14 @@ const TelaServicos = () => {
   const [newService, setNewService] = useState('');
   const [newServiceDescription, setNewServiceDescription] = useState('');
   const [editingService, setEditingService] = useState(null);
+  const [availableSectors, setAvailableSectors] = useState([]);
+  const [selectedSector, setSelectedSector] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [currentActivityField, setCurrentActivityField] = useState('');
 
   useEffect(() => {
-    const loadServices = async () => {
-      const storedServices = await getServices();
-      setServices(storedServices);
-    };
     loadServices();
+    loadAvailableSectors();
   }, []);
 
   useEffect(() => {
@@ -45,6 +52,40 @@ const TelaServicos = () => {
       setNewServiceDescription('');
     }
   }, [editingService]);
+
+  const loadServices = async () => {
+    try {
+      // Obter o ramo de atividade selecionado
+      const info = await AsyncStorage.getItem('businessInfo');
+      let selectedActivityField = '';
+      if (info) {
+        const parsedInfo = JSON.parse(info);
+        selectedActivityField = parsedInfo.activityField;
+        setCurrentActivityField(selectedActivityField);
+      }
+
+      if (selectedActivityField) {
+        const storedServices = await getServicesBySector(selectedActivityField);
+        setServices(storedServices);
+      } else {
+        // Caso não haja ramo selecionado, pode carregar todos ou nenhum serviço
+        setServices([]);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar serviços:', error);
+    }
+  };
+
+  const loadAvailableSectors = async () => {
+    try {
+      const sectors = await getAllActivityFields();
+      const sectorNames = sectors.map((sector) => sector.name);
+      console.log('Ramos de atividade disponíveis:', sectorNames);
+      setAvailableSectors(sectorNames);
+    } catch (error) {
+      console.error('Erro ao carregar ramos de atividade:', error);
+    }
+  };
 
   const checkServiceLinkedToAppointment = async (serviceName) => {
     const appointments = await getAppointments();
@@ -65,11 +106,17 @@ const TelaServicos = () => {
     }
 
     try {
-      await addService(newService, newServiceDescription, 0);
+      // Obter o ID do ramo de atividade atual
+      const sectorData = await getActivityFieldByName(currentActivityField);
+      let activityFieldId = null;
+      if (sectorData) {
+        activityFieldId = sectorData.id;
+      }
+
+      await addService(newService, newServiceDescription, 0, activityFieldId);
       setNewService('');
       setNewServiceDescription('');
-      const updatedServices = await getServices();
-      setServices(updatedServices);
+      loadServices();
       Toast.show({
         type: 'success',
         text1: 'Sucesso',
@@ -87,7 +134,9 @@ const TelaServicos = () => {
   };
 
   const handleDeleteService = async (id, serviceName) => {
-    const linkedAppointments = await checkServiceLinkedToAppointment(serviceName);
+    const linkedAppointments = await checkServiceLinkedToAppointment(
+      serviceName
+    );
     if (linkedAppointments.length > 0) {
       Alert.alert(
         'Confirmar Exclusão',
@@ -110,8 +159,7 @@ const TelaServicos = () => {
                 }
                 // Exclui o serviço
                 await deleteService(id);
-                const updatedServices = await getServices();
-                setServices(updatedServices);
+                loadServices();
                 Toast.show({
                   type: 'success',
                   text1: 'Sucesso',
@@ -145,8 +193,7 @@ const TelaServicos = () => {
             onPress: async () => {
               try {
                 await deleteService(id);
-                const updatedServices = await getServices();
-                setServices(updatedServices);
+                loadServices();
                 Toast.show({
                   type: 'success',
                   text1: 'Sucesso',
@@ -178,8 +225,7 @@ const TelaServicos = () => {
         service.description,
         newFavoriteStatus
       );
-      const updatedServices = await getServices();
-      setServices(updatedServices);
+      loadServices();
       Toast.show({
         type: 'success',
         text1: 'Sucesso',
@@ -217,8 +263,7 @@ const TelaServicos = () => {
       setNewService('');
       setNewServiceDescription('');
       setEditingService(null);
-      const updatedServices = await getServices();
-      setServices(updatedServices);
+      loadServices();
       Toast.show({
         type: 'success',
         text1: 'Sucesso',
@@ -232,6 +277,38 @@ const TelaServicos = () => {
         text2: 'Não foi possível atualizar o serviço.',
         visibilityTime: 1500,
       });
+    }
+  };
+
+  const handleImportServices = async () => {
+    if (!selectedSector) {
+      Alert.alert(
+        'Erro',
+        'Por favor, selecione um ramo de atividade para importar serviços.'
+      );
+      return;
+    }
+
+    try {
+      // Obter o ID do ramo de atividade atual
+      const sectorData = await getActivityFieldByName(currentActivityField);
+      let activityFieldId = null;
+      if (sectorData) {
+        activityFieldId = sectorData.id;
+      }
+
+      await importServicesFromSector(selectedSector, activityFieldId);
+      Toast.show({
+        type: 'success',
+        text1: 'Sucesso',
+        text2: `Serviços do ramo ${selectedSector} importados com sucesso.`,
+        visibilityTime: 1500,
+      });
+      setModalVisible(false);
+      loadServices(); // Recarregar serviços após importação
+    } catch (error) {
+      console.error('Erro ao importar serviços:', error);
+      Alert.alert('Erro', 'Ocorreu um erro ao importar os serviços.');
     }
   };
 
@@ -317,15 +394,72 @@ const TelaServicos = () => {
           </View>
         )}
       />
+
+      {/* Botão para Importar Serviços */}
+      <TouchableOpacity
+        style={[styles.importButton, { backgroundColor: '#8A2BE2' }]}
+        onPress={() => setModalVisible(true)}
+      >
+        <Text style={[styles.importButtonText, { color: '#FFFFFF' }]}>
+          Importar Serviços de Outros Ramos
+        </Text>
+      </TouchableOpacity>
+
+      {/* Modal para Selecionar o Ramo de Atividade para Importar */}
+      <Modal
+        transparent={true}
+        animationType="slide"
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => {}}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Selecionar Ramo de Atividade para Importar
+              </Text>
+              <Picker
+                selectedValue={selectedSector}
+                style={[styles.picker, { color: theme.text }]}
+                onValueChange={(itemValue) => setSelectedSector(itemValue)}
+              >
+                <Picker.Item label="-- Selecione --" value="" />
+                {availableSectors
+                  .map((sector) => (
+                    <Picker.Item key={sector} label={sector} value={sector} />
+                  ))}
+              </Picker>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={handleImportServices}
+                >
+                  <Text style={styles.modalButtonText}>Importar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text
+                    style={[styles.modalButtonText, styles.cancelButtonText]}
+                  >
+                    Cancelar
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
 
+// Estilos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#FFFFFF',
   },
   title: {
     fontSize: 24,
@@ -344,11 +478,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 20,
-    backgroundColor: '#8A2BE2',
   },
   buttonText: {
     fontWeight: 'bold',
-    color: '#FFFFFF',
   },
   serviceItem: {
     flexDirection: 'row',
@@ -370,6 +502,58 @@ const styles = StyleSheet.create({
   excluirText: {
     marginLeft: 10,
     color: 'red',
+  },
+  importButton: {
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  importButtonText: {
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    padding: 20,
+    borderRadius: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    marginBottom: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  modalButton: {
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginLeft: 10,
+    backgroundColor: '#8A2BE2',
+  },
+  cancelButton: {
+    backgroundColor: '#CCCCCC',
+  },
+  modalButtonText: {
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  cancelButtonText: {
+    color: '#333333',
   },
 });
 
