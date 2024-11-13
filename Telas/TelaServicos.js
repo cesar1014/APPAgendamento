@@ -1,3 +1,4 @@
+// TelaServicos.js
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
@@ -37,6 +38,11 @@ const TelaServicos = () => {
   const [selectedSector, setSelectedSector] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [currentActivityField, setCurrentActivityField] = useState('');
+  const [errors, setErrors] = useState({});
+
+  // Definindo os tamanhos máximos
+  const MAX_SERVICE_NAME_LENGTH = 50;
+  const MAX_SERVICE_DESCRIPTION_LENGTH = 200;
 
   useEffect(() => {
     loadServices();
@@ -51,6 +57,7 @@ const TelaServicos = () => {
       setNewService('');
       setNewServiceDescription('');
     }
+    setErrors({});
   }, [editingService]);
 
   const loadServices = async () => {
@@ -95,13 +102,21 @@ const TelaServicos = () => {
   };
 
   const handleAddService = async () => {
+    const newErrors = {};
     if (!newService.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Erro',
-        text2: 'O nome do serviço não pode estar vazio.',
-        visibilityTime: 1500,
-      });
+      newErrors.newService = 'O nome do serviço não pode estar vazio.';
+    } else if (newService.length > MAX_SERVICE_NAME_LENGTH) {
+      newErrors.newService = `O nome do serviço não pode exceder ${MAX_SERVICE_NAME_LENGTH} caracteres.`;
+    }
+
+    if (!newServiceDescription.trim()) {
+      newErrors.newServiceDescription = 'A descrição do serviço não pode estar vazia.';
+    } else if (newServiceDescription.length > MAX_SERVICE_DESCRIPTION_LENGTH) {
+      newErrors.newServiceDescription = `A descrição do serviço não pode exceder ${MAX_SERVICE_DESCRIPTION_LENGTH} caracteres.`;
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -116,6 +131,7 @@ const TelaServicos = () => {
       await addService(newService, newServiceDescription, 0, activityFieldId);
       setNewService('');
       setNewServiceDescription('');
+      setErrors({});
       loadServices();
       Toast.show({
         type: 'success',
@@ -243,13 +259,21 @@ const TelaServicos = () => {
   };
 
   const handleUpdateService = async () => {
-    if (!editingService || !newService.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Erro',
-        text2: 'O nome do serviço não pode estar vazio.',
-        visibilityTime: 1500,
-      });
+    const newErrors = {};
+    if (!newService.trim()) {
+      newErrors.newService = 'O nome do serviço não pode estar vazio.';
+    } else if (newService.length > MAX_SERVICE_NAME_LENGTH) {
+      newErrors.newService = `O nome do serviço não pode exceder ${MAX_SERVICE_NAME_LENGTH} caracteres.`;
+    }
+
+    if (!newServiceDescription.trim()) {
+      newErrors.newServiceDescription = 'A descrição do serviço não pode estar vazia.';
+    } else if (newServiceDescription.length > MAX_SERVICE_DESCRIPTION_LENGTH) {
+      newErrors.newServiceDescription = `A descrição do serviço não pode exceder ${MAX_SERVICE_DESCRIPTION_LENGTH} caracteres.`;
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -263,6 +287,7 @@ const TelaServicos = () => {
       setNewService('');
       setNewServiceDescription('');
       setEditingService(null);
+      setErrors({});
       loadServices();
       Toast.show({
         type: 'success',
@@ -321,38 +346,70 @@ const TelaServicos = () => {
           styles.input,
           { backgroundColor: theme.card, color: theme.text },
           !isDarkMode && { borderColor: '#ccc', borderWidth: 1 },
+          errors.newService && styles.inputError,
         ]}
         placeholder="Nome do Serviço"
         placeholderTextColor={isDarkMode ? '#c7c7cc' : '#7c7c7c'}
         value={newService}
-        onChangeText={setNewService}
+        onChangeText={(text) => {
+          if (text.length <= MAX_SERVICE_NAME_LENGTH) {
+            setNewService(text);
+            if (errors.newService) {
+              setErrors((prevErrors) => ({ ...prevErrors, newService: null }));
+            }
+          }
+        }}
+        maxLength={MAX_SERVICE_NAME_LENGTH}
       />
+      {errors.newService && (
+        <Text style={styles.errorText}>{errors.newService}</Text>
+      )}
 
       <TextInput
         style={[
           styles.input,
           { backgroundColor: theme.card, color: theme.text },
           !isDarkMode && { borderColor: '#ccc', borderWidth: 1 },
+          errors.newServiceDescription && styles.inputError,
         ]}
         placeholder="Descrição do Serviço"
         placeholderTextColor={isDarkMode ? '#c7c7cc' : '#7c7c7c'}
         value={newServiceDescription}
-        onChangeText={setNewServiceDescription}
+        onChangeText={(text) => {
+          if (text.length <= MAX_SERVICE_DESCRIPTION_LENGTH) {
+            setNewServiceDescription(text);
+            if (errors.newServiceDescription) {
+              setErrors((prevErrors) => ({
+                ...prevErrors,
+                newServiceDescription: null,
+              }));
+            }
+          }
+        }}
+        maxLength={MAX_SERVICE_DESCRIPTION_LENGTH}
+        multiline
       />
+      {errors.newServiceDescription && (
+        <Text style={styles.errorText}>{errors.newServiceDescription}</Text>
+      )}
 
       {editingService ? (
         <TouchableOpacity
           onPress={handleUpdateService}
           style={[styles.button, { backgroundColor: '#8A2BE2' }]}
         >
-          <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Salvar Alterações</Text>
+          <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+            Salvar Alterações
+          </Text>
         </TouchableOpacity>
       ) : (
         <TouchableOpacity
           onPress={handleAddService}
           style={[styles.button, { backgroundColor: '#8A2BE2' }]}
         >
-          <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Adicionar Serviço</Text>
+          <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+            Adicionar Serviço
+          </Text>
         </TouchableOpacity>
       )}
 
@@ -424,10 +481,9 @@ const TelaServicos = () => {
                 onValueChange={(itemValue) => setSelectedSector(itemValue)}
               >
                 <Picker.Item label="-- Selecione --" value="" />
-                {availableSectors
-                  .map((sector) => (
-                    <Picker.Item key={sector} label={sector} value={sector} />
-                  ))}
+                {availableSectors.map((sector) => (
+                  <Picker.Item key={sector} label={sector} value={sector} />
+                ))}
               </Picker>
               <View style={styles.modalButtons}>
                 <TouchableOpacity
@@ -472,6 +528,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     height: 50,
     fontSize: 16,
+  },
+  inputError: {
+    borderColor: '#FF6F61',
+    borderWidth: 1,
+  },
+  errorText: {
+    color: '#FF6F61',
+    marginBottom: 10,
   },
   button: {
     padding: 15,

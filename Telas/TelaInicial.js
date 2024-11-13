@@ -1,26 +1,27 @@
+// TelaInicial.js
 import React, { useContext, useEffect, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   Alert,
   Image,
+  Platform,
 } from 'react-native';
 import {
   format,
   isSameDay,
   parseISO,
   isBefore,
-  isToday,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getAppointments, deleteAppointment } from '../database';
 import { ThemeContext } from './tema';
-import Toast from 'react-native-toast-message'
+import Toast from 'react-native-toast-message';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
+import { FlashList } from '@shopify/flash-list';
 
 const getPeriodIcon = (time) => {
   const [hour] = time.split(':').map(Number);
@@ -145,12 +146,20 @@ export default function TelaInicial({
   }, [selectedDate, appointments]);
 
   const handleDateChange = (event, date) => {
-    setShowDatePicker(false);
     if (date) {
       setSelectedDate(date);
-    } else {
-      setSelectedDate(null);
     }
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+  };
+
+  const showDatePickerModal = () => {
+    setShowDatePicker(true);
+  };
+
+  const hideDatePicker = () => {
+    setShowDatePicker(false);
   };
 
   const handleDelete = (appointment) => {
@@ -222,7 +231,7 @@ export default function TelaInicial({
       </Text>
 
       <TouchableOpacity
-        onPress={() => setShowDatePicker(true)}
+        onPress={showDatePickerModal}
         style={[styles.dateFilterButton, { backgroundColor: theme.card }]}
       >
         <Image
@@ -240,8 +249,13 @@ export default function TelaInicial({
         <DateTimePicker
           value={selectedDate || new Date()}
           mode="date"
-          display="default"
-          onChange={handleDateChange}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={(event, date) => {
+            handleDateChange(event, date);
+            if (Platform.OS === 'ios') {
+              hideDatePicker();
+            }
+          }}
           locale="pt-BR"
         />
       )}
@@ -257,7 +271,7 @@ export default function TelaInicial({
         </TouchableOpacity>
       )}
 
-      <FlatList
+      <FlashList
         data={filteredAppointments}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
@@ -268,6 +282,7 @@ export default function TelaInicial({
             onStartAtendimento={handleStartAtendimento}
           />
         )}
+        estimatedItemSize={150}
         ListEmptyComponent={() => (
           <Text style={[styles.emptyText, { color: theme.text }]}>
             Nenhum agendamento encontrado.

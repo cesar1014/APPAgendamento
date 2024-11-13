@@ -180,7 +180,9 @@ export default function TelaColaboradores({ navigation }) {
       style={styles.serviceItem}
       onPress={() => toggleServiceSelection(item.id)}
     >
-      <Text style={{ color: theme.text }}>{item.serviceName}</Text>
+      <Text style={[styles.serviceText, { color: theme.text }]}>
+        {item.serviceName}
+      </Text>
       <Checkbox
         status={selectedServices.includes(item.id) ? 'checked' : 'unchecked'}
         onPress={() => toggleServiceSelection(item.id)}
@@ -388,8 +390,11 @@ const styles = StyleSheet.create({
   },
   serviceItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 5,
+  },
+  serviceText: {
+    flex: 1,
+    marginRight: 10,
   },
 });

@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  ScrollView,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { Checkbox } from 'react-native-paper';
 import { ThemeContext } from './tema';
@@ -27,7 +27,7 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
   const [services, setServices] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [selectedServices, setSelectedServices] = useState([]);
-  const [selectedColaboradores, setSelectedColaboradores] = useState([]);
+  const [selectedColaborador, setSelectedColaborador] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalColabVisible, setModalColabVisible] = useState(false);
 
@@ -49,7 +49,7 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
       setColaboradores(storedColaboradores);
 
       if (appointment.colaboradorId) {
-        setSelectedColaboradores([appointment.colaboradorId]);
+        setSelectedColaborador(appointment.colaboradorId);
       }
     } catch (error) {
       Toast.show({
@@ -71,16 +71,6 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
     }
   };
 
-  const toggleColaboradorSelection = (colaboradorId) => {
-    if (selectedColaboradores.includes(colaboradorId)) {
-      setSelectedColaboradores((prev) =>
-        prev.filter((id) => id !== colaboradorId)
-      );
-    } else {
-      setSelectedColaboradores([colaboradorId]);
-    }
-  };
-
   const handleSaveChanges = async () => {
     if (selectedServices.length === 0) {
       Toast.show({
@@ -96,7 +86,7 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
       await updateAtendimento(
         appointment.atendimentoId,
         selectedServices.join(', '),
-        selectedColaboradores.length > 0 ? selectedColaboradores[0] : null
+        selectedColaborador
       );
 
       Toast.show({
@@ -119,13 +109,12 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
 
   const renderServiceItem = ({ item }) => (
     <TouchableOpacity
-      style={[
-        styles.serviceItem,
-        { backgroundColor: theme.card, borderColor: theme.border },
-      ]}
+      style={styles.serviceItem}
       onPress={() => toggleServiceSelection(item.serviceName)}
     >
-      <Text style={{ color: theme.text }}>{item.serviceName}</Text>
+      <Text style={[styles.serviceText, { color: theme.text }]}>
+        {item.serviceName}
+      </Text>
       <Checkbox
         status={selectedServices.includes(item.serviceName) ? 'checked' : 'unchecked'}
         onPress={() => toggleServiceSelection(item.serviceName)}
@@ -136,96 +125,86 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
 
   const renderColaboradorItem = ({ item }) => (
     <TouchableOpacity
-      style={[
-        styles.serviceItem,
-        { backgroundColor: theme.card, borderColor: theme.border },
-      ]}
-      onPress={() => toggleColaboradorSelection(item.id)}
+      style={styles.serviceItem}
+      onPress={() => setSelectedColaborador(item.id)}
     >
-      <Text style={{ color: theme.text }}>{item.nome}</Text>
+      <Text style={[styles.serviceText, { color: theme.text }]}>
+        {item.nome}
+      </Text>
       <Checkbox
-        status={selectedColaboradores.includes(item.id) ? 'checked' : 'unchecked'}
-        onPress={() => toggleColaboradorSelection(item.id)}
+        status={selectedColaborador === item.id ? 'checked' : 'unchecked'}
+        onPress={() => setSelectedColaborador(item.id)}
         color="#8A2BE2"
       />
     </TouchableOpacity>
   );
 
   return (
-    <ScrollView
-      contentContainerStyle={[
-        styles.container,
-        { backgroundColor: theme.background },
-      ]}
-    >
-      {/* Seção de Serviços */}
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>Serviços</Text>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Text style={[styles.title, { color: theme.text }]}>Editar Atendimento</Text>
 
+      {/* Seção de Serviços */}
       <TouchableOpacity
         style={[
           styles.selectButton,
-          {
-            backgroundColor: theme.card,
-            borderColor: isDarkMode ? '#444' : '#ccc',
-            borderWidth: 1,
-            borderRadius: 8,
-          },
+          { backgroundColor: theme.card },
+          !isDarkMode && { borderWidth: 1, borderColor: '#ccc' },
         ]}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={{ color: theme.text }}>Selecione os serviços</Text>
+        <Text style={{ color: theme.text }}>
+          Selecionar Serviços ({selectedServices.length})
+        </Text>
       </TouchableOpacity>
 
+      {/* Exibir serviços selecionados */}
       {selectedServices.length > 0 ? (
-        selectedServices.map((service, index) => (
-          <Text key={index} style={{ color: theme.text, marginBottom: 5 }}>
-            - {service}
-          </Text>
-        ))
+        <View style={styles.selectedItemsContainer}>
+          {selectedServices.map((service, index) => (
+            <Text key={index} style={{ color: theme.text }}>
+              - {service}
+            </Text>
+          ))}
+        </View>
       ) : (
         <Text style={{ color: theme.text }}>Nenhum serviço selecionado</Text>
       )}
 
       {/* Seção de Colaboradores */}
-      <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 20 }]}>
-        Colaboradores
-      </Text>
-
       <TouchableOpacity
         style={[
           styles.selectButton,
-          {
-            backgroundColor: theme.card,
-            borderColor: isDarkMode ? '#444' : '#ccc',
-            borderWidth: 1,
-            borderRadius: 8,
-          },
+          { backgroundColor: theme.card, marginTop: 20 },
+          !isDarkMode && { borderWidth: 1, borderColor: '#ccc' },
         ]}
         onPress={() => setModalColabVisible(true)}
       >
-        <Text style={{ color: theme.text }}>Selecione o colaborador</Text>
+        <Text style={{ color: theme.text }}>
+          Selecionar Colaborador {selectedColaborador ? '(1)' : '(0)'}
+        </Text>
       </TouchableOpacity>
 
-      {selectedColaboradores.length > 0 ? (
-        colaboradores
-          .filter((colab) => selectedColaboradores.includes(colab.id))
-          .map((colab) => (
-            <Text key={colab.id} style={{ color: theme.text, marginBottom: 5 }}>
-              - {colab.nome}
-            </Text>
-          ))
+      {/* Exibir colaborador selecionado */}
+      {selectedColaborador ? (
+        <View style={styles.selectedItemsContainer}>
+          <Text style={{ color: theme.text }}>
+            - {colaboradores.find((colab) => colab.id === selectedColaborador)?.nome}
+          </Text>
+        </View>
       ) : (
         <Text style={{ color: theme.text }}>Nenhum colaborador selecionado</Text>
       )}
 
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: '#8A2BE2', marginTop: 20 }]}
+        style={[styles.button, { backgroundColor: '#8A2BE2', marginTop: 30 }]}
         onPress={handleSaveChanges}
       >
-        <Text style={styles.buttonText}>Salvar Alterações</Text>
+        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+          Salvar Alterações
+        </Text>
       </TouchableOpacity>
 
-      {/* Modal para serviços */}
+      {/* Modal para seleção de serviços */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -248,13 +227,15 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
               style={[styles.modalButton, { backgroundColor: '#8A2BE2' }]}
               onPress={() => setModalVisible(false)}
             >
-              <Text style={styles.buttonText}>Concluído</Text>
+              <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+                Concluído
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Modal para colaboradores */}
+      {/* Modal para seleção de colaboradores */}
       <Modal
         visible={modalColabVisible}
         animationType="slide"
@@ -277,51 +258,52 @@ export default function TelaEditarAtendimentoConcluido({ route, navigation }) {
               style={[styles.modalButton, { backgroundColor: '#8A2BE2' }]}
               onPress={() => setModalColabVisible(false)}
             >
-              <Text style={styles.buttonText}>Concluído</Text>
+              <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+                Concluído
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     padding: 20,
-    flexGrow: 1,
   },
-  sectionTitle: {
-    fontSize: 20,
+  title: {
+    fontSize: 24,
+    marginBottom: 20,
     fontWeight: 'bold',
-    marginBottom: 10,
   },
   selectButton: {
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 15,
+  },
+  selectedItemsContainer: {
+    marginTop: 10,
   },
   button: {
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 20,
   },
   buttonText: {
-    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   modalBackground: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Fundo semi-transparente
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContainer: {
     width: '80%',
     maxHeight: '80%',
-    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 20,
   },
@@ -338,13 +320,12 @@ const styles = StyleSheet.create({
   },
   serviceItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 5,
-    marginBottom: 10,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
+    marginBottom: 5,
+  },
+  serviceText: {
+    flex: 1,
+    marginRight: 10,
   },
 });

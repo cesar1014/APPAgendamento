@@ -123,7 +123,11 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
 
       <TouchableOpacity
         onPress={() => setShowDatePicker(true)}
-        style={[styles.dateFilterButton, { backgroundColor: theme.card }]}
+        style={[
+          styles.dateFilterButton,
+          { backgroundColor: theme.card },
+          !isDarkMode && { borderWidth: 1, borderColor: '#ccc' },
+        ]}
       >
         <Image
           source={require('../assets/IconesTelaInicial/Calendario.png')}
@@ -162,12 +166,13 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
         data={filteredAppointments}
         keyExtractor={(item) => item.atendimentoId.toString()}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[styles.card, { backgroundColor: theme.card }]}
-            onPress={() => {}}
-          >
+          <View style={[styles.card, { backgroundColor: theme.card }]}>
             <View style={styles.cardHeader}>
-              <Text style={[styles.cardTitle, { color: theme.text }]}>
+              <Text
+                style={[styles.cardTitle, { color: theme.text }]}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
                 {item.name} ({item.phone})
               </Text>
               <View style={styles.cardActions}>
@@ -185,7 +190,11 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
                 </TouchableOpacity>
               </View>
             </View>
-            <Text style={[styles.cardDescription, { color: theme.text }]}>
+            <Text
+              style={[styles.cardDescription, { color: theme.text }]}
+              numberOfLines={3}
+              ellipsizeMode="tail"
+            >
               {item.serviceDescription}
             </Text>
             <Text style={[styles.cardDate, { color: theme.text }]}>
@@ -198,7 +207,7 @@ export default function TelaAtendimentosConcluidos({ navigation }) {
                 Colaborador: {item.colaboradorNome}
               </Text>
             )}
-          </TouchableOpacity>
+          </View>
         )}
         ListEmptyComponent={() => (
           <Text style={[styles.emptyText, { color: theme.text }]}>
@@ -255,20 +264,27 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start', // Alinha o conteúdo ao topo
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: 'bold',
+    flex: 1,
+    marginRight: 10,
+    flexWrap: 'wrap',
   },
   cardActions: {
     flexDirection: 'row',
+    flexShrink: 0,
   },
   editText: {
     marginRight: 15,
     fontSize: 16,
+    color: '#007AFF',
   },
   deleteText: {
     fontSize: 16,
+    color: 'red',
   },
   cardDescription: {
     fontSize: 14,

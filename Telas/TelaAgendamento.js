@@ -15,13 +15,14 @@ import {
   addAppointment,
   updateAppointment,
   getAppointments,
-  getServices,
+  getServicesBySector,
   getColaboradores,
   getColaboradoresForService,
 } from '../database';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RNPickerSelect from 'react-native-picker-select';
 import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function TelaAgendamento({
   route,
@@ -47,7 +48,22 @@ export default function TelaAgendamento({
 
   useEffect(() => {
     const loadServicesAndColaboradores = async () => {
-      const storedServices = await getServices();
+      // Obter o ramo de atividade selecionado
+      const info = await AsyncStorage.getItem('businessInfo');
+      let selectedActivityField = '';
+      if (info) {
+        const parsedInfo = JSON.parse(info);
+        selectedActivityField = parsedInfo.activityField;
+      }
+
+      let storedServices = [];
+      if (selectedActivityField) {
+        storedServices = await getServicesBySector(selectedActivityField);
+      } else {
+        // Se não houver ramo selecionado, pode carregar todos ou nenhum serviço
+        storedServices = [];
+      }
+
       setServices(storedServices);
 
       const storedColaboradores = await getColaboradores();
@@ -135,13 +151,11 @@ export default function TelaAgendamento({
   }, [serviceDescription, services, allColaboradores]);
 
   const handleDateChange = (event, selectedDate) => {
-    if (event.type === 'set') {
+    if (Platform.OS === 'android') {
       setShowDatePicker(false);
-      if (selectedDate) {
-        setDate(selectedDate);
-      }
-    } else {
-      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      setDate(selectedDate);
     }
   };
 
@@ -455,7 +469,7 @@ export default function TelaAgendamento({
         <DateTimePicker
           value={date}
           mode="date"
-          display="default"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={handleDateChange}
           locale="pt-BR"
           themeVariant={isDarkMode ? 'dark' : 'light'}
