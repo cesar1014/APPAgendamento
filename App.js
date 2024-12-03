@@ -22,11 +22,12 @@ import TelaGerenciar from './Telas/TelaGerenciar';
 import TelaAtendimento from './Telas/TelaAtendimentos';
 import TelaAtendimentosConcluidos from './Telas/TelaAtendimentosConcluidos';
 import TelaEditarAtendimentoConcluido from './Telas/TelaEditarAtendimentoConcluido';
-
+import EditAppointmentTextScreen from './Telas/EditarTextoAgendamento';
 import WelcomeScreen from './Telas/TelaBemVindo';
 import QuickTourScreen from './Telas/TelaIntroducao';
 import InitialSetupScreen from './Telas/TelaInicializacao';
 import SettingsScreen from './Telas/TelaConfiguracoes';
+import TelaClientesAtendidos from './Telas/TelaClientesAtendidos'
 
 import {
   createTablesIfNeeded,
@@ -38,6 +39,8 @@ import { ThemeProvider, ThemeContext } from './Telas/tema';
 
 import Toast from 'react-native-toast-message';
 import CustomToast from './CustomToast';
+
+import * as FileSystem from 'expo-file-system';
 
 if (!__DEV__) {
   console.log = () => {};
@@ -258,6 +261,21 @@ function AppNavigator({
                 />
               )}
             </Stack.Screen>
+            <Stack.Screen
+              name="EditAppointmentTextScreen"
+              component={EditAppointmentTextScreen}
+              options={{
+                headerTitle: 'Editar Texto de Agendamento',
+              }}
+            />
+
+<Stack.Screen
+          name="CLIENTES_ATENDIDOS"
+          component={TelaClientesAtendidos}
+          options={{
+            headerTitle: 'Clientes Atendidos',
+          }}
+        />
           </>
         )}
       </Stack.Navigator>

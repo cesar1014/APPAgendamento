@@ -33,6 +33,25 @@ export default function TelaGerenciar({ navigation }) {
           Atendimentos Concluídos
         </Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: '#8A2BE2', marginTop: 20 }]}
+        onPress={() => navigation.navigate('CLIENTES_ATENDIDOS')}
+      >
+        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+          Clientes Atendidos
+        </Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: '#8A2BE2', marginTop: 20 }]}
+        onPress={() => navigation.navigate('EditAppointmentTextScreen')}
+      >
+        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+        Texto de Agendamento
+        </Text>
+      </TouchableOpacity>
+
     </View>
   );
 }

@@ -684,6 +684,21 @@ export const updateAtendimento = async (id, serviceDescription, colaboradorId = 
     [serviceDescription, colaboradorId, id]
   );
 };
+// Função para gerar o texto de agendamento
+export const generateAppointmentText = (appointment, customText) => {
+  const { name, serviceDescription, date, time } = appointment;
+  const formattedDate = new Date(date).toLocaleDateString('pt-BR');
+
+  // Usar o texto personalizado ou o texto padrão
+  const appointmentText = customText
+    ? customText.replace('${name}', name)
+                .replace('${serviceDescription}', serviceDescription)
+                .replace('${time}', time)
+                .replace('${formattedDate}', formattedDate)
+    : `Olá ${name}. Você possui agendado o serviço ${serviceDescription} às ${time} do dia ${formattedDate}.`;
+
+  return appointmentText;
+};
 
 // Função para verificar se as tabelas existem (para fins de depuração)
 export const checkTablesExist = async () => {
@@ -714,6 +729,33 @@ export const checkTablesExist = async () => {
   }
 };
 
+export const getClientesAtendidos = async () => {
+  const db = await openDatabase();
+  try {
+    const clientesAtendidos = await db.getAllAsync(`
+      SELECT a.name, a.phone, GROUP_CONCAT(DISTINCT a.date) as dates
+      FROM appointments a
+      INNER JOIN atendimentos at ON at.appointmentId = a.id AND at.atendimentoConcluido = 1
+      GROUP BY a.name, a.phone
+      ORDER BY MAX(a.date) DESC;
+    `);
+
+    // Processar os resultados para criar um array de clientes
+    const clientesProcessados = clientesAtendidos.map(cliente => ({
+      name: cliente.name,
+      phone: cliente.phone,
+      // Converter string de datas em array e ordenar
+      dates: cliente.dates.split(',')
+        .map(date => date.trim())
+        .sort((a, b) => new Date(a) - new Date(b))
+    }));
+
+    return clientesProcessados;
+  } catch (error) {
+    console.error('Erro ao buscar clientes atendidos:', error);
+    throw error;
+  }
+};
 
 
 

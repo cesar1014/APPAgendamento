@@ -7,7 +7,9 @@ import {
   Alert,
   Image,
   Platform,
+  Share,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   format,
   isSameDay,
@@ -15,7 +17,7 @@ import {
   isBefore,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getAppointments, deleteAppointment } from '../database';
+import { getAppointments, deleteAppointment,generateAppointmentText } from '../database';
 import { ThemeContext } from './tema';
 import Toast from 'react-native-toast-message';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -54,59 +56,103 @@ const AppointmentCard = ({
       : '#FFB6C1'
     : theme.card;
 
-  return (
-    <TouchableOpacity onPress={() => setShowActions(!showActions)}>
-      <View style={[styles.card, { backgroundColor: cardBackgroundColor }]}>
-        <View style={styles.header}>
-          <Text style={[styles.periodText, { color: theme.text }]}>
-            {icon} {period}
-          </Text>
-          <Text style={[styles.cardTime, { color: theme.text }]}>
-            {appointment.time}
-            {!isSameDay(new Date(appointment.date), new Date()) && (
-              <Text style={styles.dateText}>
-                {' '}
-                {format(new Date(appointment.date), 'dd/MM', { locale: ptBR })}
+    
+    // Função para compartilhar o texto
+    const handleShare = async (appointment) => {
+      try {
+        // Carregar o texto customizado do AsyncStorage
+        const storedText = await AsyncStorage.getItem('appointmentText');
+        const customText = storedText || 'Olá ${name}. Você possui agendado o serviço ${serviceDescription} às ${time} do dia ${formattedDate}.';
+    
+        const generatedText = generateAppointmentText(appointment, customText);
+    
+        if (generatedText) {
+          await Share.share({
+            message: generatedText, // Passando a mensagem corretamente
+          });
+        } else {
+          Alert.alert('Texto não gerado corretamente');
+        }
+      } catch (error) {
+        console.error('Erro ao compartilhar:', error);
+        Alert.alert('Erro ao compartilhar o texto.');
+      }
+    };
+
+    return (
+      <TouchableOpacity onPress={() => setShowActions(!showActions)}>
+        <View style={[styles.card, { backgroundColor: cardBackgroundColor }]}>
+          <View style={styles.header}>
+            <Text style={[styles.periodText, { color: theme.text }]}>
+              {icon} {period}
+            </Text>
+            <Text style={[styles.cardTime, { color: theme.text }]}>
+              {appointment.time}
+              {!isSameDay(new Date(appointment.date), new Date()) && (
+                <Text style={styles.dateText}>
+                  {' '}
+                  {format(new Date(appointment.date), 'dd/MM', { locale: ptBR })}
+                </Text>
+              )}
+            </Text>
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>
+              {appointment.name} ({appointment.phone})
+            </Text>
+            <Text
+              style={[
+                styles.cardDescription,
+                { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' },
+              ]}
+            >
+              {appointment.serviceDescription}
+            </Text>
+            {appointment.colaboradorNome && (
+              <Text
+                style={[
+                  styles.colaboradorText,
+                  { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' },
+                ]}
+              >
+                Colaborador: {appointment.colaboradorNome}
               </Text>
             )}
-          </Text>
-        </View>
-        <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>
-            {appointment.name} ({appointment.phone})
-          </Text>
-          <Text
-            style={[styles.cardDescription, { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' }]}
-          >
-            {appointment.serviceDescription}
-          </Text>
-          {appointment.colaboradorNome && (
-            <Text
-              style={[styles.colaboradorText, { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' }]}
-            >
-              Colaborador: {appointment.colaboradorNome}
-            </Text>
-          )}
-          {showActions && (
-            <View style={styles.actionButtons}>
-              <TouchableOpacity onPress={() => onStartAtendimento(appointment)}>
-                <Text style={styles.startText}>Iniciar Atendimento</Text>
-              </TouchableOpacity>
-              <View style={styles.rightActionButtons}>
-                <TouchableOpacity onPress={() => onEdit(appointment)}>
-                  <Text style={styles.editText}>Alterar</Text>
+            {showActions && (
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  onPress={() => onStartAtendimento(appointment)}
+                  style={styles.actionButton}
+                >
+                  <Text style={styles.startText}>Iniciar Atendimento</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => onDelete(appointment)}>
-                  <Text style={styles.removeText}>Excluir</Text>
-                </TouchableOpacity>
+                <View style={styles.rightActionButtons}>
+                  <TouchableOpacity
+                    onPress={() => onEdit(appointment)}
+                    style={styles.actionButton}
+                  >
+                    <Text style={styles.editText}>Alterar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => onDelete(appointment)}
+                    style={styles.actionButton}
+                  >
+                    <Text style={styles.removeText}>Excluir</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleShare(appointment)}
+                    style={styles.actionButton}
+                  >
+                    <Text style={styles.shareText}>Compartilhar</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          )}
+            )}
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
+      </TouchableOpacity>
+    );
+  };
 
 export default function TelaInicial({
   navigation,
@@ -307,7 +353,6 @@ export default function TelaInicial({
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -344,7 +389,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 10,
     alignItems: 'center',
-    backgroundColor: '#8A2BE2',
+    backgroundColor: '#8A2BE2', // Cor do sistema (roxo)
   },
   clearFilterText: {
     fontSize: 16,
@@ -355,6 +400,12 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 10,
     position: 'relative',
+    backgroundColor: '#f9f9f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   header: {
     flexDirection: 'row',
@@ -363,6 +414,7 @@ const styles = StyleSheet.create({
   },
   periodText: {
     fontSize: 14,
+    color: '#8A2BE2',  // Cor do sistema (roxo)
   },
   cardTime: {
     fontSize: 16,
@@ -386,25 +438,43 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
+    flexDirection: 'column',  // Organiza os botões em uma coluna
+    marginTop: 15,
   },
   rightActionButtons: {
-    flexDirection: 'row',
+    flexDirection: 'row',  // Os botões à direita ficam em linha
+    justifyContent: 'space-between', // Espaço entre os botões
+    marginTop: 10,
+  },
+  actionButton: {
+    backgroundColor: '#8A2BE2',  // Cor do sistema (roxo)
+    paddingVertical: 8,  // Botões menores
+    paddingHorizontal: 12,  // Botões menores
+    borderRadius: 6,  // Bordas mais suaves
+    marginBottom: 8,  // Espaçamento entre os botões
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.8,  // Adicionando opacidade para um efeito mais sutil
   },
   startText: {
-    fontSize: 16,
-    color: '#00BFFF',
+    fontSize: 14,  // Tamanho do texto reduzido
+    color: '#00FF09',
+    fontWeight: 'bold',
   },
   editText: {
-    fontSize: 16,
-    marginRight: 20,
-    color: '#8A2BE2',
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
   removeText: {
-    fontSize: 16,
+    fontSize: 14,  // Tamanho do texto reduzido
     color: 'red',
+    fontWeight: 'bold',
+  },
+  shareText: {
+    fontSize: 14,  // Tamanho do texto reduzido
+    color: '#1E90FF',  // Azul para o botão de compartilhar
+    fontWeight: 'bold',
   },
   emptyText: {
     textAlign: 'center',
@@ -418,8 +488,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#8A2BE2',
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 14,  // Tamanho do texto reduzido
     fontWeight: 'bold',
     color: '#FFFFFF',
+    
   },
 });
