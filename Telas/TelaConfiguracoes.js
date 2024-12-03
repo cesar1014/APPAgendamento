@@ -105,20 +105,22 @@ export default function SettingsScreen({
           text: 'Resetar',
           onPress: async () => {
             try {
-              // Verificar se a autenticação local está disponível
               const isEnrolled = await LocalAuthentication.hasHardwareAsync();
               const hasBiometrics = await LocalAuthentication.isEnrolledAsync();
   
               if (isEnrolled && hasBiometrics) {
-                // Solicitar autenticação
-                const authResult = await LocalAuthentication.authenticateAsync({
+                const authOptions = {
                   promptMessage: 'Confirme sua identidade para resetar o aplicativo',
-                  fallbackLabel: 'Use sua senha',
                   cancelLabel: 'Cancelar',
-                });
+                };
+  
+                if (Platform.OS === 'android') {
+                  authOptions.fallbackLabel = 'Use sua senha';
+                }
+  
+                const authResult = await LocalAuthentication.authenticateAsync(authOptions);
   
                 if (!authResult.success) {
-                  // Usar Toast para exibir a falha na autenticação
                   Toast.show({
                     type: 'error',
                     text1: 'Autenticação Falhou',
