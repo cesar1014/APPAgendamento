@@ -757,6 +757,39 @@ export const getClientesAtendidos = async () => {
   }
 };
 
+export const deleteAllServices = async () => {
+  const db = await openDatabase();
+  try {
+    await db.runAsync('DELETE FROM services;');
+    console.log('Todos os serviços excluídos com sucesso.');
+  } catch (error) {
+    console.error('Erro ao excluir serviços:', error);
+    throw error;
+  }
+};
 
+// Função para deletar todos os agendamentos
+export const deleteAllAppointments = async () => {
+  const db = await openDatabase();
+  try {
+    await db.runAsync('DELETE FROM appointments;');
+    console.log('Todos os agendamentos excluídos com sucesso.');
+  } catch (error) {
+    console.error('Erro ao excluir agendamentos:', error);
+    throw error;
+  }
+};
+
+// Função para deletar todos os colaboradores
+export const deleteAllColaboradores = async () => {
+  const db = await openDatabase();
+  try {
+    await db.runAsync('DELETE FROM colaboradores;');
+    console.log('Todos os colaboradores excluídos com sucesso.');
+  } catch (error) {
+    console.error('Erro ao excluir colaboradores:', error);
+    throw error;
+  }
+};
 
 

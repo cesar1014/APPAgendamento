@@ -12,7 +12,14 @@ import {
 import { ThemeContext } from './tema';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  deleteAllServices,
+  deleteAllAppointments,
+  deleteAllColaboradores,
+} from '../database'
+import Toast from 'react-native-toast-message';
 
+import * as LocalAuthentication from 'expo-local-authentication';
 export default function SettingsScreen({
   navigation,
   businessInfo,
@@ -60,7 +67,8 @@ export default function SettingsScreen({
     }
   };
 
-  // Função para remover o logotipo
+  
+
   const handleRemoveLogo = () => {
     setLogo(null);
   };
@@ -84,6 +92,81 @@ export default function SettingsScreen({
     navigation.goBack();
   };
 
+  const handleResetApp = async () => {
+    Alert.alert(
+      'Resetar Aplicativo',
+      'Todos os dados serão desprezados. Você tem certeza que deseja continuar?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Resetar',
+          onPress: async () => {
+            try {
+              // Verificar se a autenticação local está disponível
+              const isEnrolled = await LocalAuthentication.hasHardwareAsync();
+              const hasBiometrics = await LocalAuthentication.isEnrolledAsync();
+  
+              if (isEnrolled && hasBiometrics) {
+                // Solicitar autenticação
+                const authResult = await LocalAuthentication.authenticateAsync({
+                  promptMessage: 'Confirme sua identidade para resetar o aplicativo',
+                  fallbackLabel: 'Use sua senha',
+                  cancelLabel: 'Cancelar',
+                });
+  
+                if (!authResult.success) {
+                  // Usar Toast para exibir a falha na autenticação
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Autenticação Falhou',
+                    text2: 'Não foi possível autenticar o usuário.',
+                  });
+                  return;
+                }
+              }
+  
+              // Limpar dados do AsyncStorage
+              await AsyncStorage.clear();
+  
+              // Deletar todos os serviços, agendamentos e colaboradores
+              await deleteAllServices();
+              await deleteAllAppointments();
+              await deleteAllColaboradores();
+  
+              // Resetar informações do negócio
+              setBusinessInfo({});
+              setName('');
+              setPhone('');
+              setAddress('');
+              setLogo(null);
+              setActivityField('');
+  
+              // Usar Toast para exibir sucesso
+              Toast.show({
+                type: 'success',
+                text1: 'Sucesso',
+                text2: 'O aplicativo foi resetado para as configurações iniciais.',
+              });
+            } catch (error) {
+              // Usar Toast para exibir erro
+              Toast.show({
+                type: 'error',
+                text1: 'Erro',
+                text2: 'Ocorreu um erro ao resetar o aplicativo.',
+              });
+              console.error('Erro ao resetar o aplicativo:', error);
+            }
+          },
+        },
+      ],
+      { cancelable: false }
+    );
+  };
+  
+
   return (
     <ScrollView
       contentContainerStyle={[
@@ -100,7 +183,7 @@ export default function SettingsScreen({
         placeholder="Nome do Estabelecimento *"
         placeholderTextColor={isDarkMode ? '#c7c7cc' : '#7c7c7c'}
         value={name}
-        onChangeText={(text) => setName(text)}
+ onChangeText={(text) => setName(text)}
       />
       {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
 
@@ -180,6 +263,15 @@ export default function SettingsScreen({
       >
         <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
           Salvar Alterações
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={handleResetApp}
+        style={[styles.button, { backgroundColor: '#FF6F61' }]}
+      >
+        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+          Resetar para Configurações Iniciais
         </Text>
       </TouchableOpacity>
     </ScrollView>
