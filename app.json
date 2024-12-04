@@ -19,7 +19,8 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Este aplicativo precisa acessar sua galeria para selecionar o logotipo.",
         "NSCameraUsageDescription": "Este aplicativo precisa acessar sua câmera para tirar fotos.",
-        "NSPhotoLibraryAddUsageDescription": "Este aplicativo precisa salvar imagens na sua galeria."
+        "NSPhotoLibraryAddUsageDescription": "Este aplicativo precisa salvar imagens na sua galeria.",
+        "NSDocumentsFolderUsageDescription": "Este aplicativo requer acesso à sua pasta de documentos para salvar backups."
       }
     },
     "android": {

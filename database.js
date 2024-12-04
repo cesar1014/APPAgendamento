@@ -11,7 +11,6 @@ const openDatabase = async () => {
   return db;
 };
 
-// Mapeamento de serviços padrão por ramo de atividade
 const defaultServicesBySector = {
   'Oficina Mecânica': [
     {
@@ -700,7 +699,6 @@ export const generateAppointmentText = (appointment, customText) => {
   return appointmentText;
 };
 
-// Função para verificar se as tabelas existem (para fins de depuração)
 export const checkTablesExist = async () => {
   const db = await openDatabase();
   try {
@@ -791,5 +789,111 @@ export const deleteAllColaboradores = async () => {
     throw error;
   }
 };
+export const exportDatabase = async () => {
+  const db = await openDatabase();
+  try {
+    // Collect data from all tables
+    const activityFields = await db.getAllAsync('SELECT * FROM activityFields;');
+    const services = await db.getAllAsync('SELECT * FROM services;');
+    const colaboradores = await db.getAllAsync('SELECT * FROM colaboradores;');
+    const serviceColaboradores = await db.getAllAsync('SELECT * FROM service_colaboradores;');
+    const appointments = await db.getAllAsync('SELECT * FROM appointments;');
+    const atendimentos = await db.getAllAsync('SELECT * FROM atendimentos;');
 
+    // Construct backup object
+    const backupData = {
+      activityFields,
+      services,
+      colaboradores,
+      serviceColaboradores,
+      appointments,
+      atendimentos,
+    };
+
+    return backupData;
+  } catch (error) {
+    console.error('Erro ao exportar o banco de dados:', error);
+    throw error;
+  }
+};
+
+// Enhanced importDatabase to include all tables
+export const importDatabase = async (backupData) => {
+  const db = await openDatabase();
+  try {
+    await db.execAsync('BEGIN TRANSACTION;');
+
+    // Limpar dados existentes nas tabelas que possuem dependências
+    await db.runAsync('DELETE FROM service_colaboradores;');
+    await db.runAsync('DELETE FROM atendimentos;');
+    await db.runAsync('DELETE FROM appointments;');
+    await db.runAsync('DELETE FROM services;');
+    await db.runAsync('DELETE FROM colaboradores;');
+    await db.runAsync('DELETE FROM activityFields;');
+
+    // Inserir dados nas tabelas na ordem correta
+    for (const field of backupData.activityFields) {
+      await db.runAsync(
+        'INSERT INTO activityFields (id, name) VALUES (?, ?);',
+        [field.id, field.name]
+      );
+    }
+
+    for (const service of backupData.services) {
+      await db.runAsync(
+        'INSERT INTO services (id, serviceName, description, isFavorite, activityFieldId) VALUES (?, ?, ?, ?, ?);',
+        [service.id, service.serviceName, service.description, service.isFavorite, service.activityFieldId]
+      );
+    }
+
+    for (const colaborador of backupData.colaboradores) {
+      await db.runAsync(
+        'INSERT INTO colaboradores (id, nome) VALUES (?, ?);',
+        [colaborador.id, colaborador.nome]
+      );
+    }
+
+    for (const sc of backupData.serviceColaboradores) {
+      await db.runAsync(
+        'INSERT INTO service_colaboradores (serviceId, colaboradorId) VALUES (?, ?);',
+        [sc.serviceId, sc.colaboradorId]
+      );
+    }
+
+    for (const appointment of backupData.appointments) {
+      await db.runAsync(
+        'INSERT INTO appointments (id, name, phone, serviceDescription, date, time, colaboradorId) VALUES (?, ?, ?, ?, ?, ?, ?);',
+        [
+          appointment.id,
+          appointment.name,
+          appointment.phone,
+          appointment.serviceDescription,
+          appointment.date,
+          appointment.time,
+          appointment.colaboradorId,
+        ]
+      );
+    }
+
+    for (const atendimento of backupData.atendimentos) {
+      await db.runAsync(
+        'INSERT INTO atendimentos (id, appointmentId, serviceDescription, colaboradorId, atendimentoConcluido) VALUES (?, ?, ?, ?, ?);',
+        [
+          atendimento.id,
+          atendimento.appointmentId,
+          atendimento.serviceDescription,
+          atendimento.colaboradorId,
+          atendimento.atendimentoConcluido,
+        ]
+      );
+    }
+
+    await db.execAsync('COMMIT;');
+    console.log('Banco de dados importado com sucesso.');
+  } catch (error) {
+    await db.execAsync('ROLLBACK;');
+    console.error('Erro ao importar o banco de dados:', error);
+    throw error;
+  }
+};
 

@@ -1,4 +1,6 @@
-import React, { useContext, useEffect, useState } from 'react';
+// TelaInicial.js
+
+import React, { useContext, useState,useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,12 +19,13 @@ import {
   isBefore,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getAppointments, deleteAppointment,generateAppointmentText } from '../database';
+import { getAppointments, deleteAppointment, generateAppointmentText } from '../database';
 import { ThemeContext } from './tema';
 import Toast from 'react-native-toast-message';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
+import { useFocusEffect } from '@react-navigation/native';
 
 const getPeriodIcon = (time) => {
   const [hour] = time.split(':').map(Number);
@@ -56,103 +59,102 @@ const AppointmentCard = ({
       : '#FFB6C1'
     : theme.card;
 
-    
-    // Função para compartilhar o texto
-    const handleShare = async (appointment) => {
-      try {
-        // Carregar o texto customizado do AsyncStorage
-        const storedText = await AsyncStorage.getItem('appointmentText');
-        const customText = storedText || 'Olá ${name}. Você possui agendado o serviço ${serviceDescription} às ${time} do dia ${formattedDate}.';
-    
-        const generatedText = generateAppointmentText(appointment, customText);
-    
-        if (generatedText) {
-          await Share.share({
-            message: generatedText, // Passando a mensagem corretamente
-          });
-        } else {
-          Alert.alert('Texto não gerado corretamente');
-        }
-      } catch (error) {
-        console.error('Erro ao compartilhar:', error);
-        Alert.alert('Erro ao compartilhar o texto.');
-      }
-    };
+  // Função para compartilhar o texto
+  const handleShare = async (appointment) => {
+    try {
+      // Carregar o texto customizado do AsyncStorage
+      const storedText = await AsyncStorage.getItem('appointmentText');
+      const customText = storedText || `Olá ${appointment.name}. Você possui agendado o serviço ${appointment.serviceDescription} às ${appointment.time} do dia ${format(new Date(appointment.date), 'dd/MM/yyyy', { locale: ptBR })}.`;
 
-    return (
-      <TouchableOpacity onPress={() => setShowActions(!showActions)}>
-        <View style={[styles.card, { backgroundColor: cardBackgroundColor }]}>
-          <View style={styles.header}>
-            <Text style={[styles.periodText, { color: theme.text }]}>
-              {icon} {period}
-            </Text>
-            <Text style={[styles.cardTime, { color: theme.text }]}>
-              {appointment.time}
-              {!isSameDay(new Date(appointment.date), new Date()) && (
-                <Text style={styles.dateText}>
-                  {' '}
-                  {format(new Date(appointment.date), 'dd/MM', { locale: ptBR })}
-                </Text>
-              )}
-            </Text>
-          </View>
-          <View style={styles.cardContent}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>
-              {appointment.name} ({appointment.phone})
-            </Text>
+      const generatedText = generateAppointmentText(appointment, customText);
+
+      if (generatedText) {
+        await Share.share({
+          message: generatedText,
+        });
+      } else {
+        Alert.alert('Texto não gerado corretamente');
+      }
+    } catch (error) {
+      console.error('Erro ao compartilhar:', error);
+      Alert.alert('Erro ao compartilhar o texto.');
+    }
+  };
+
+  return (
+    <TouchableOpacity onPress={() => setShowActions(!showActions)}>
+      <View style={[styles.card, { backgroundColor: cardBackgroundColor }]}>
+        <View style={styles.header}>
+          <Text style={[styles.periodText, { color: theme.text }]}>
+            {icon} {period}
+          </Text>
+          <Text style={[styles.cardTime, { color: theme.text }]}>
+            {appointment.time}
+            {!isSameDay(new Date(appointment.date), new Date()) && (
+              <Text style={styles.dateText}>
+                {' '}
+                {format(new Date(appointment.date), 'dd/MM', { locale: ptBR })}
+              </Text>
+            )}
+          </Text>
+        </View>
+        <View style={styles.cardContent}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>
+            {appointment.name} ({appointment.phone})
+          </Text>
+          <Text
+            style={[
+              styles.cardDescription,
+              { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' },
+            ]}
+          >
+            {appointment.serviceDescription}
+          </Text>
+          {appointment.colaboradorNome && (
             <Text
               style={[
-                styles.cardDescription,
+                styles.colaboradorText,
                 { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' },
               ]}
             >
-              {appointment.serviceDescription}
+              Colaborador: {appointment.colaboradorNome}
             </Text>
-            {appointment.colaboradorNome && (
-              <Text
-                style={[
-                  styles.colaboradorText,
-                  { color: isDarkMode ? '#D3D3D3' : '#4B4B4B' },
-                ]}
+          )}
+          {showActions && (
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                onPress={() => onStartAtendimento(appointment)}
+                style={styles.actionButton}
               >
-                Colaborador: {appointment.colaboradorNome}
-              </Text>
-            )}
-            {showActions && (
-              <View style={styles.actionButtons}>
+                <Text style={styles.startText}>Iniciar Atendimento</Text>
+              </TouchableOpacity>
+              <View style={styles.rightActionButtons}>
                 <TouchableOpacity
-                  onPress={() => onStartAtendimento(appointment)}
+                  onPress={() => onEdit(appointment)}
                   style={styles.actionButton}
                 >
-                  <Text style={styles.startText}>Iniciar Atendimento</Text>
+                  <Text style={styles.editText}>Alterar</Text>
                 </TouchableOpacity>
-                <View style={styles.rightActionButtons}>
-                  <TouchableOpacity
-                    onPress={() => onEdit(appointment)}
-                    style={styles.actionButton}
-                  >
-                    <Text style={styles.editText}>Alterar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => onDelete(appointment)}
-                    style={styles.actionButton}
-                  >
-                    <Text style={styles.removeText}>Excluir</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleShare(appointment)}
-                    style={styles.actionButton}
-                  >
-                    <Text style={styles.shareText}>Compartilhar</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                  onPress={() => onDelete(appointment)}
+                  style={styles.actionButton}
+                >
+                  <Text style={styles.removeText}>Excluir</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleShare(appointment)}
+                  style={styles.actionButton}
+                >
+                  <Text style={styles.shareText}>Compartilhar</Text>
+                </TouchableOpacity>
               </View>
-            )}
-          </View>
+            </View>
+          )}
         </View>
-      </TouchableOpacity>
-    );
-  };
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 export default function TelaInicial({
   navigation,
@@ -165,19 +167,30 @@ export default function TelaInicial({
   const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  useEffect(() => {
-    const loadAppointments = async () => {
-      const storedAppointments = await getAppointments();
-      const sortedAppointments = storedAppointments.sort((a, b) => {
-        const dateTimeA = parseISO(`${a.date}T${a.time}`);
-        const dateTimeB = parseISO(`${b.date}T${b.time}`);
-        return dateTimeA - dateTimeB;
-      });
-      setAppointments(sortedAppointments);
-      setFilteredAppointments(sortedAppointments);
-    };
-    loadAppointments();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadAppointments = async () => {
+        try {
+          const storedAppointments = await getAppointments();
+          const sortedAppointments = storedAppointments.sort((a, b) => {
+            const dateTimeA = parseISO(`${a.date}T${a.time}`);
+            const dateTimeB = parseISO(`${b.date}T${b.time}`);
+            return dateTimeA - dateTimeB;
+          });
+          setAppointments(sortedAppointments);
+          setFilteredAppointments(sortedAppointments);
+        } catch (error) {
+          console.error('Erro ao carregar agendamentos:', error);
+          Toast.show({
+            type: 'error',
+            text1: 'Erro',
+            text2: 'Ocorreu um erro ao carregar os agendamentos.',
+          });
+        }
+      };
+      loadAppointments();
+    }, [])
+  );
 
   useEffect(() => {
     if (selectedDate) {
@@ -353,6 +366,7 @@ export default function TelaInicial({
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -414,7 +428,7 @@ const styles = StyleSheet.create({
   },
   periodText: {
     fontSize: 14,
-    color: '#8A2BE2',  // Cor do sistema (roxo)
+    color: '#8A2BE2', // Cor do sistema (roxo)
   },
   cardTime: {
     fontSize: 16,
@@ -438,26 +452,26 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   actionButtons: {
-    flexDirection: 'column',  // Organiza os botões em uma coluna
+    flexDirection: 'column', // Organiza os botões em uma coluna
     marginTop: 15,
   },
   rightActionButtons: {
-    flexDirection: 'row',  // Os botões à direita ficam em linha
+    flexDirection: 'row', // Os botões à direita ficam em linha
     justifyContent: 'space-between', // Espaço entre os botões
     marginTop: 10,
   },
   actionButton: {
-    backgroundColor: '#8A2BE2',  // Cor do sistema (roxo)
-    paddingVertical: 8,  // Botões menores
-    paddingHorizontal: 12,  // Botões menores
-    borderRadius: 6,  // Bordas mais suaves
-    marginBottom: 8,  // Espaçamento entre os botões
+    backgroundColor: '#8A2BE2', // Cor do sistema (roxo)
+    paddingVertical: 8, // Botões menores
+    paddingHorizontal: 12, // Botões menores
+    borderRadius: 6, // Bordas mais suaves
+    marginBottom: 8, // Espaçamento entre os botões
     alignItems: 'center',
     justifyContent: 'center',
-    opacity: 0.8,  // Adicionando opacidade para um efeito mais sutil
+    opacity: 0.8, // Adicionando opacidade para um efeito mais sutil
   },
   startText: {
-    fontSize: 14,  // Tamanho do texto reduzido
+    fontSize: 14, // Tamanho do texto reduzido
     color: '#00FF09',
     fontWeight: 'bold',
   },
@@ -467,13 +481,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   removeText: {
-    fontSize: 14,  // Tamanho do texto reduzido
+    fontSize: 14, // Tamanho do texto reduzido
     color: 'red',
     fontWeight: 'bold',
   },
   shareText: {
-    fontSize: 14,  // Tamanho do texto reduzido
-    color: '#1E90FF',  // Azul para o botão de compartilhar
+    fontSize: 14, // Tamanho do texto reduzido
+    color: '#1E90FF', // Azul para o botão de compartilhar
     fontWeight: 'bold',
   },
   emptyText: {
@@ -488,9 +502,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#8A2BE2',
   },
   buttonText: {
-    fontSize: 14,  // Tamanho do texto reduzido
+    fontSize: 14, // Tamanho do texto reduzido
     fontWeight: 'bold',
     color: '#FFFFFF',
-    
   },
 });
